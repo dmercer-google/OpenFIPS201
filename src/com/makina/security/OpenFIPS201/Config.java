@@ -126,6 +126,10 @@ public abstract class Config {
     /// object, including with an incorrect value
     /// SP800-73-4 Requirement: Not specified under PIV (extension functionality)
     public static final boolean FEATURE_DISCOVERY_OBJECT_DEFAULT = true;
+    
+    /// If set to true, we enforce rules regarding mechanisms and instance counts of 
+    /// PIV keys defined in para 5.1 of NIST SP 800-73-4 PArt 1
+    public static final boolean FEATURE_STRICT_PIV = true;
 
 
     ///////////////////////////////////////////////////////////////////////////

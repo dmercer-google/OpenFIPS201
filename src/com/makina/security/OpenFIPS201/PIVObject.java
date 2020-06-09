@@ -79,7 +79,7 @@ public abstract class PIVObject {
      * @return True if the object matches
      */
     public boolean match(byte id) {
-        return (header[HEADER_ID] == id);
+        return (getId() == id);
     }
 
     /**

@@ -49,9 +49,6 @@ public final class PIV {
     // Persistent Objects
     //
 
-    // Data Store
-    private PIVDataObject firstDataObject;
-
     // Command Chaining Handler
     private ChainBuffer chainBuffer;
 
@@ -120,13 +117,17 @@ public final class PIV {
     // SP800-78-4 5.3 - Table 6-2
     //
 
-    public static final byte ID_ALG_DEFAULT		= (byte)0x00; // This maps to TDEA_3KEY
-    public static final byte ID_ALG_TDEA_3KEY	= (byte)0x03;
-    public static final byte ID_ALG_RSA_1024	= (byte)0x06;
-    public static final byte ID_ALG_RSA_2048	= (byte)0x07;
-    public static final byte ID_ALG_AES_128		= (byte)0x08;
-    public static final byte ID_ALG_AES_192		= (byte)0x0A;
-    public static final byte ID_ALG_AES_256		= (byte)0x0C;
+    public static final byte ID_ALG_DEFAULT				= (byte)0x00; // This maps to TDEA_3KEY
+    public static final byte ID_ALG_TDEA_3KEY			= (byte)0x03;
+    public static final byte ID_ALG_RSA_1024			= (byte)0x06;
+    public static final byte ID_ALG_RSA_2048			= (byte)0x07;
+    public static final byte ID_ALG_AES_128				= (byte)0x08;
+    public static final byte ID_ALG_AES_192				= (byte)0x0A;
+    public static final byte ID_ALG_AES_256				= (byte)0x0C;
+    public static final byte ID_ALG_ECC_P256			= (byte)0x11;
+    public static final byte ID_ALG_ECC_P384			= (byte)0x14;
+    public static final byte ID_ALG_CIPHER_SUITE_2	    = (byte)0x27;
+    public static final byte ID_ALG_ECC_CIPHER_SUITE_7	= (byte)0x2E;
 
     //
     // PIV-specific ISO 7816 STATUS WORD (SW12) responses
@@ -301,7 +302,7 @@ public final class PIV {
             ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
         }
 
-        PIVDataObject data = findDataObject(id);
+        PIVDataObject data = DataStore.findDataObject(id);
         if (data == null) {
             ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
         }
@@ -436,7 +437,7 @@ public final class PIV {
 
 
         // PRE-CONDITION 5 - The tag supplied in the 'TAG LIST' element must exist in the data store
-        PIVDataObject obj = findDataObject(id);
+        PIVDataObject obj = DataStore.findDataObject(id);
         if (obj == null) {
             ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
         }
@@ -1396,7 +1397,7 @@ public final class PIV {
         if (key == null) {			
 			// NOTE: The error message we return here is different dependant on whether the key is bad (6A86),
 			// 		 or the mechanism is bad (6A80) (See SP800-73-4 3.3.2 Generate Asymmetric Keypair). 
-			if (!cspPIV.keyExists(buffer[ISO7816.OFFSET_P2])) {
+			if (!DataStore.keyExists(buffer[ISO7816.OFFSET_P2])) {
 				// The key reference is bad
 				ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
 			} else {
@@ -1627,13 +1628,16 @@ public final class PIV {
         tlvReader.moveNext();
 
         if (CONST_OP_KEY == operation) {
-
             // PRE-CONDITION 7a - If the operation is CONST_OP_KEY, then the 'KEY MECHANISM' tag
             //					 must be present with length 1
             if (!tlvReader.match(CONST_TAG_KEY_MECHANISM)) ISOException.throwIt(ISO7816.SW_WRONG_DATA);
             if (tlvReader.getLength() != (short)1) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
             keyMechanism = tlvReader.toByte();
 
+            if(!PIV.isAllowedPivMechanism(id, keyMechanism) ) {
+            	ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+            }
+            
             // Move to the next tag
             tlvReader.moveNext();
 
@@ -1654,7 +1658,7 @@ public final class PIV {
 
             // PRE-CONDITION 7b - If 'OPERATION' is set to CONST_OP_DATA, the object referenced by 'id' value
             // 					 must not already exist in the data store
-            PIVObject obj = firstDataObject;
+            PIVObject obj = DataStore.getDataStore();
             while (obj != null) {
                 if (obj.getId() == id) ISOException.throwIt(ISO7816.SW_FILE_FULL);
                 obj = obj.nextObject;
@@ -1793,27 +1797,6 @@ public final class PIV {
     }
 
     /**
-     * Searches for a data object within the local data store
-     * @param id The data object to find
-     */
-    private PIVDataObject findDataObject(byte id) {
-
-        PIVDataObject data = firstDataObject;
-
-        // Traverse the linked list
-        while (data != null) {
-            if (data.match(id)) {
-                return data;
-            };
-
-            data = (PIVDataObject)data.nextObject;
-        }
-
-        return null;
-
-    }
-
-    /**
      * Adds a data object to the data store
      * @param id of the data object to create (just the LSB)
      * @param modeContact Access Mode control flags
@@ -1826,21 +1809,14 @@ public final class PIV {
         // Create our new key
         PIVDataObject data = new PIVDataObject(id, modeContact, modeContactless);
 
-        // Check if this is the first key added
-        if (firstDataObject == null) {
-            firstDataObject = data;
-            return;
-        }
-
         // Find the last data object in the linked list
-        PIVObject last = firstDataObject;
+        PIVObject last = DataStore.getDataStore();
         while (last.nextObject != null) {
             last = last.nextObject;
         }
 
         // Assign the next object
         last.nextObject = data;
-
 
         //
         // SPECIAL OBJECT - Discovery Data
@@ -1856,5 +1832,108 @@ public final class PIV {
                                     (short)0,
                                     (short)Config.DEFAULT_DISCOVERY.length);
         }
+    }
+    
+    /*
+     * @param keyId the key identifier of the key
+     * @return true if the slot is one defined in NIST SP 800-73-4
+     */
+    public static boolean isPivKey(byte keyId) {
+    	final byte[] pivKeys = {
+    			(byte)0x04, // PIV Secure Messaging Key
+    			// Retired Key Management Keys
+    			(byte)0x82, (byte)0x83, (byte)0x84, (byte)0x85, 
+    			(byte)0x86, (byte)0x87, (byte)0x88, (byte)0x89, 
+    			(byte)0x8A, (byte)0x8B, (byte)0x8C, (byte)0x8D, 
+    			(byte)0x8E, (byte)0x8F, (byte)0x90, (byte)0x91, 
+    			(byte)0x92, (byte)0x93, (byte)0x94, (byte)0x95, 
+    			(byte)0x9A, // PIV Authentication Key 
+    			(byte)0x9B, // PIV Card Application Administration Key
+    			(byte)0x9C, // Digital Signature Key
+    			(byte)0x9D, // Key MAnagement Key
+    			(byte)0x9E  // Card Authentication Key
+    			};  
+    	boolean isPiv = false;
+        for (short i = 0; i < pivKeys.length && !isPiv; i++) {
+        	isPiv = keyId == pivKeys[i];
+        }
+    	return isPiv;
+    }
+    
+    /*
+     * @param keyId the identifier of the key
+     * @mechanism the crypto mechanism to be tested.
+     * 
+     * @return true if Config.FEATURE_STRICT_PIV and the mechanism is approved for the key.
+     */
+    public static boolean isAllowedPivMechanism(byte keyId, byte mechanism) {
+    	boolean isAllowed = true;
+    	if (Config.FEATURE_STRICT_PIV) {
+    		switch (keyId) {
+    		case (byte)0x04:
+    			isAllowed = 
+    			mechanism == PIV.ID_ALG_CIPHER_SUITE_2 || 
+    			mechanism == PIV.ID_ALG_ECC_CIPHER_SUITE_7;
+    			break;
+    		case (byte)0x82:
+    		case (byte)0x83:
+    		case (byte)0x84:
+    		case (byte)0x85:
+    		case (byte)0x86:
+    		case (byte)0x87:
+    		case (byte)0x88:
+    		case (byte)0x89:
+    		case (byte)0x8A:
+    		case (byte)0x8B:
+    		case (byte)0x8C:
+    		case (byte)0x8D:
+    		case (byte)0x8E:
+    		case (byte)0x8F:
+    		case (byte)0x90:
+    		case (byte)0x91:
+    		case (byte)0x92:
+    		case (byte)0x93:
+    		case (byte)0x94:
+    		case (byte)0x95:
+    			isAllowed = 
+    			mechanism == PIV.ID_ALG_RSA_1024 ||
+    			mechanism == PIV.ID_ALG_RSA_2048 ||
+    			mechanism == PIV.ID_ALG_ECC_P256 ||
+    			mechanism == PIV.ID_ALG_ECC_P384;
+    		    break;
+    		case (byte)0x9A:
+    			isAllowed = 
+    			mechanism == PIV.ID_ALG_RSA_2048 ||
+    			mechanism == PIV.ID_ALG_ECC_P256;
+    			break;
+    		case (byte)0x9B: 
+    			isAllowed = 
+    			mechanism == PIV.ID_ALG_DEFAULT   ||
+    			mechanism == PIV.ID_ALG_TDEA_3KEY ||
+    			mechanism == PIV.ID_ALG_AES_128   ||
+    			mechanism == PIV.ID_ALG_AES_192   ||
+    			mechanism == PIV.ID_ALG_AES_256;
+    		    break;
+    		case (byte)0x9C:
+    		case (byte)0x9D:
+    			isAllowed = 
+    			mechanism == PIV.ID_ALG_RSA_2048 ||
+    	    	mechanism == PIV.ID_ALG_ECC_P256 ||
+			    mechanism == PIV.ID_ALG_ECC_P384;
+    			break;
+    		case (byte)0x9E:
+	    			isAllowed = 
+	    			mechanism == PIV.ID_ALG_DEFAULT   ||
+	    			mechanism == PIV.ID_ALG_TDEA_3KEY ||
+	    			mechanism == PIV.ID_ALG_AES_128   ||
+	    			mechanism == PIV.ID_ALG_AES_192   ||
+	    			mechanism == PIV.ID_ALG_AES_256   ||
+	    			mechanism == PIV.ID_ALG_RSA_2048  ||
+	    			mechanism == PIV.ID_ALG_ECC_P256;
+    				
+    			break;    			
+    		}
+    	}
+    	return isAllowed;
     }
 }

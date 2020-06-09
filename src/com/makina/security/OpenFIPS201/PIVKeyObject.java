@@ -188,7 +188,7 @@ public abstract class PIVKeyObject extends PIVObject {
     public final boolean getSecurityStatus() {
         return (securityFlags[FLAGS_AUTHENTICATED] == true);
     }
-
+    
     public abstract void updateElement(byte element, byte[] buffer, short offset, short length);
     public abstract short encrypt(Cipher cipher, byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);
     public abstract short decrypt(Cipher cipher, byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);

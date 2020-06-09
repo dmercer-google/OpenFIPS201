@@ -84,6 +84,7 @@ public final class OpenFIPS201 extends Applet {
 
     public static void install(byte[] bArray, short bOffset, byte bLength) {
         new OpenFIPS201().register(bArray, (short) (bOffset + 1), bArray[bOffset]);
+        DataStore.init();
     }
 
     public void deselect() {

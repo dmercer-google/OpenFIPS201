@@ -45,9 +45,6 @@ public final class PIVSecurityProvider {
     public final OwnerPIN cardPUK; // 81 - PIN Unlocking Key (PUK)
     public final CVMPIN globalPIN; // 00 - Global PIN
 
-    // Key objects
-    private PIVKeyObject firstKey;
-
     // Cryptographic Service Providers
     private final Cipher cspAES;
     private final Cipher cspRSA;
@@ -100,7 +97,7 @@ public final class PIVSecurityProvider {
         if (cardPUK.isValidated()) cardPUK.reset();
         if (Config.FEATURE_PIN_GLOBAL_ENABLED && globalPIN.isValidated()) globalPIN.reset();
 
-        PIVKeyObject key = firstKey;
+        PIVKeyObject key = DataStore.getKeyStore();
         while (key != null) {
             key.resetSecurityStatus();
             key = (PIVKeyObject)key.nextObject;
@@ -155,7 +152,7 @@ public final class PIVSecurityProvider {
             mechanism = PIV.ID_ALG_TDEA_3KEY;
         }
 
-        PIVKeyObject key = firstKey;
+        PIVKeyObject key = DataStore.getKeyStore();
 
         // Traverse the linked list
         while (key != null) {
@@ -164,20 +161,6 @@ public final class PIVSecurityProvider {
         }
         
         return null;
-    }
-    
-    public boolean keyExists(byte id) {
-	    
-        PIVKeyObject key = firstKey;
-
-        // Traverse the linked list
-        while (key != null) {
-            if (key.match(id)) return true;
-            key = (PIVKeyObject)key.nextObject;
-        }
-        
-        return false;	    
-	    
     }
 
     /**
@@ -198,14 +181,8 @@ public final class PIVSecurityProvider {
         // Create our new key
         PIVKeyObject key = PIVKeyObject.create(id, modeContact, modeContactless, mechanism, role);
 
-        // Check if this is the first key added
-        if (firstKey == null) {
-            firstKey = key;
-            return;
-        }
-
         // Find the last key
-        PIVObject last = firstKey;
+        PIVObject last = DataStore.getKeyStore();
         while (last.nextObject != null) {
             last = last.nextObject;
         }
@@ -232,7 +209,7 @@ public final class PIVSecurityProvider {
 
         // Iterate through the key store for ROLE_ADMIN keys
         if (!requiresSecureChannel) {
-            PIVKeyObject key = firstKey;
+            PIVKeyObject key = DataStore.getKeyStore();
             while (key != null && !valid) {
                 if (key.hasRole(PIVKeyObject.ROLE_ADMIN) && key.getSecurityStatus()) {
                     valid = true;
