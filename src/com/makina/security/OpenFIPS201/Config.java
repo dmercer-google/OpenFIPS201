@@ -254,7 +254,7 @@ public abstract class Config {
     protected static final byte[] DEFAULT_APT = new byte[] {
 
         // 2 bytes - Application Property Template (TAG '61')
-        (byte)0x61, (byte)0x81, (byte)0x89,
+        (byte)0x61, (byte)0x81, (byte)0x8F,
 
         // 2 + 11 bytes - Application identifier of application (TAG '4F')
         (byte)0x4F, (byte)0x0B,
@@ -279,7 +279,7 @@ public abstract class Config {
 		'.', '8', '0', '0', '-', '7', '3', '-', '4', '.', 'p', 'd', 'f',
 
         // 2 + 24 - Cryptographic Algorithm Identifier Template (Tag 'AC')
-        (byte)0xAC, (byte)0x18,
+        (byte)0xAC, (byte)0x1E,
 
         // Supported mechanisms
         (byte)0x80, (byte)0x01, PIV.ID_ALG_DEFAULT,
@@ -289,6 +289,8 @@ public abstract class Config {
         (byte)0x80, (byte)0x01, PIV.ID_ALG_AES_256,
         (byte)0x80, (byte)0x01, PIV.ID_ALG_RSA_1024,
         (byte)0x80, (byte)0x01, PIV.ID_ALG_RSA_2048,
+        (byte)0x80, (byte)0x01, PIV.ID_ALG_ECC_P256,
+        (byte)0x80, (byte)0x01, PIV.ID_ALG_ECC_P384,
 
         // Object identifier
         (byte)0x06, (byte)0x01, (byte)0x00

@@ -127,6 +127,8 @@ public final class PIV {
     public static final byte ID_ALG_AES_128		= (byte)0x08;
     public static final byte ID_ALG_AES_192		= (byte)0x0A;
     public static final byte ID_ALG_AES_256		= (byte)0x0C;
+    public static final byte ID_ALG_ECC_P256    = (byte) 0x11;
+    public static final byte ID_ALG_ECC_P384    = (byte) 0x14;
 
     //
     // PIV-specific ISO 7816 STATUS WORD (SW12) responses
@@ -916,10 +918,10 @@ public final class PIV {
      */
     public short generalAuthenticate(byte[] buffer, short offset, short length) {
 
-        final byte CONST_TAG_TEMPLATE		= (byte)0x7C;
-        final byte CONST_TAG_WITNESS 	= (byte)0x80;
-        final byte CONST_TAG_CHALLENGE 	= (byte)0x81;
-        final byte CONST_TAG_RESPONSE 	= (byte)0x82;
+        final byte CONST_TAG_TEMPLATE		        = (byte)0x7C;
+        final byte CONST_TAG_WITNESS 	            = (byte)0x80;
+        final byte CONST_TAG_CHALLENGE 	            = (byte)0x81;
+        final byte CONST_TAG_CHALLENGE_RESPONSE 	= (byte)0x82;
 
         //
         // COMMAND CHAIN HANDLING
@@ -979,7 +981,7 @@ public final class PIV {
         //
         // STEP 1 - Traverse the TLV to determine what combination of elements exist
         //
-        short challengeOffset = 0, witnessOffset = 0, responseOffset = 0;
+        short challengeOffset = 0, witnessOffset = 0, responseOffset = 0, challengeLength = 0;
         boolean challengeEmpty = false, witnessEmpty = false, responseEmpty = false;
 
         // Save the offset in the TLV object
@@ -990,7 +992,8 @@ public final class PIV {
             if (tlvReader.match(CONST_TAG_CHALLENGE)) {
                 challengeOffset = tlvReader.getOffset();
                 challengeEmpty = tlvReader.isNull();
-            } else if (tlvReader.match(CONST_TAG_RESPONSE)) {
+                challengeLength = tlvReader.getLength();
+            } else if (tlvReader.match(CONST_TAG_CHALLENGE_RESPONSE)) {
                 responseOffset = tlvReader.getOffset();
                 responseEmpty = tlvReader.isNull();
             } else if (tlvReader.match(CONST_TAG_WITNESS)) {
@@ -1009,9 +1012,6 @@ public final class PIV {
         // STEP 2 - Process the appropriate GENERAL AUTHENTICATE case
         //
 
-        // Get our block length, which is used for the challenge size
-        length = key.getBlockLength();
-
         //
         // NOTES:
         // There are 5 authentication cases that make up all of the GENERAL AUTHENTICATE functionality:
@@ -1029,10 +1029,8 @@ public final class PIV {
         // DIGITAL SIGNATURES.
         // Documented in SP800-73-4 Part 2 Appendix A.3
         //
-
         // > Client application sends a challenge to the PIV Card Application
         if ((challengeOffset != 0 && !challengeEmpty) && (responseOffset != 0 && responseEmpty)) {
-
             // Reset any other authentication intermediate state
             authenticateReset();
 
@@ -1042,23 +1040,22 @@ public final class PIV {
                 ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
             }
 
-            // Make sure that the incoming CHALLENGE data is equal to the block length
-            tlvReader.setOffset(challengeOffset);
-            if (tlvReader.getLength() != length) {
+            // Encrypt/Sign the CHALLENGE data
+            try {
+                if (key.isAsymmetric()) {
+                    length = ((PIVKeyObjectPKI) key).sign(scratch, tlvReader.getDataOffset(), challengeLength, buffer, (short) 0);
+                } else {
+                    length = cspPIV.encrypt(key, scratch, tlvReader.getDataOffset(), challengeLength, buffer, (short) 0);
+                }
+            } finally {
                 cspPIV.zeroise(scratch, (short)0, LENGTH_SCRATCH);
-                ISOException.throwIt(ISO7816.SW_WRONG_DATA);
             }
 
-            // Encrypt the CHALLENGE data
-            length = cspPIV.encrypt(key, scratch, tlvReader.getDataOffset(), length, buffer, (short)0);
-            
-            cspPIV.zeroise(scratch, (short)0, LENGTH_SCRATCH);
-            
             // Write out the response TLV, passing through the block length as an indicative maximum
             tlvWriter.init(scratch, (short)0, length, CONST_TAG_TEMPLATE);
 
             // Create the RESPONSE tag
-            tlvWriter.writeTag(CONST_TAG_RESPONSE);
+            tlvWriter.writeTag(CONST_TAG_CHALLENGE_RESPONSE);
             tlvWriter.writeLength(length);
 
 			// Write the response cryptogram
@@ -1135,7 +1132,6 @@ public final class PIV {
 
         // > Client application requests a challenge from the PIV Card Application.
         else if (responseOffset != 0 && !responseEmpty) {
-
             // This command is only valid if the authentication state is EXTERNAL
             if (authenticationContext[OFFSET_AUTH_STATE] != AUTH_STATE_EXTERNAL) {
                 // Invalid state for this command
@@ -1188,7 +1184,6 @@ public final class PIV {
 
         // > Client application requests a WITNESS from the PIV Card Application.
         else if (witnessOffset != 0 && witnessEmpty) {
-
             // Reset any other authentication intermediate state
             authenticateReset();
 
@@ -1242,7 +1237,6 @@ public final class PIV {
 
         // > Client application returns the decrypted witness referencing the original algorithm key reference
         else if (witnessOffset != 0 && !witnessEmpty && challengeOffset != 0 && !challengeEmpty) {
-
             // < PIV Card Application authenticates the client application by verifying the decrypted witness.
 
             // This command is only valid if the authentication state is EXTERNAL
@@ -1297,7 +1291,7 @@ public final class PIV {
             tlvWriter.init(scratch, (short)0, length, CONST_TAG_TEMPLATE);
 
             // Create the RESPONSE tag
-            tlvWriter.writeTag(CONST_TAG_RESPONSE);
+            tlvWriter.writeTag(CONST_TAG_CHALLENGE_RESPONSE);
             tlvWriter.writeLength(length);
 
 			// Write the response cryptogram
@@ -1345,13 +1339,9 @@ public final class PIV {
      */
     public short generateAsymmetricKeyPair(byte[] buffer, short offset, short length) {
 
-        final byte CONST_TAG_TEMPLATE		= (byte)0xAC;
-        final byte CONST_TAG_MECHANISM		= (byte)0x80;
-        final byte CONST_TAG_PARAMETER 		= (byte)0x81;
-
-        final short CONST_TAG_RESPONSE		= (short)0x7F49;
-        final byte CONST_TAG_MODULUS		= (byte)0x81; // RSA - The modulus
-        final byte CONST_TAG_EXPONENT		= (byte)0x82; // RSA - The public exponent
+        // Request Elements
+        final byte CONST_TAG_TEMPLATE = (byte) 0xAC;
+        final byte CONST_TAG_MECHANISM = (byte) 0x80;
 
         //
         // PRE-CONDITIONS
@@ -1376,33 +1366,27 @@ public final class PIV {
         }
 
         // PRE-CONDITION 4 - The 'MECHANISM' tag must have a length of 1
-        if (buffer[offset++] != (short)1) {
+        if (buffer[offset++] != (short) 1) {
             ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         }
-
-		// PRE-CONDITION 5 - The 'MECHANISM' tag value must be one of the supported mechanisms
-		//if (buffer[offset] != PIV.ID_ALG_RSA_1024 && buffer[offset] != PIV.ID_ALG_RSA_2048) {
-			//ISOException.throwIt(ISO7816.SW_WRONG_DATA);
-		//}
 
         //
         // NOTE: We ignore the existence of the 'PARAMETER' tag, because according to SP800-78-4 the
         // RSA public exponent is now fixed to 65537 (Section 3.1 PIV Cryptographic Keys).
-        // Since we don't support ECC algorithms yet, we have no other reason to read it.
-        //
+        // ECC keys have no parameter.
 
         // PRE-CONDITION 5 - The key reference and mechanism must point to an existing key
         PIVKeyObject key = cspPIV.selectKey(buffer[ISO7816.OFFSET_P2], buffer[offset]);
-        if (key == null) {			
-			// NOTE: The error message we return here is different dependant on whether the key is bad (6A86),
-			// 		 or the mechanism is bad (6A80) (See SP800-73-4 3.3.2 Generate Asymmetric Keypair). 
-			if (!cspPIV.keyExists(buffer[ISO7816.OFFSET_P2])) {
-				// The key reference is bad
-				ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
-			} else {
-				// The mechanism is bad
-				ISOException.throwIt(ISO7816.SW_WRONG_DATA);			
-			}
+        if (key == null) {
+            // NOTE: The error message we return here is different dependant on whether the key is bad
+            // (6A86), or the mechanism is bad (6A80) (See SP800-73-4 3.3.2 Generate Asymmetric Keypair).
+            if (!cspPIV.keyExists(buffer[ISO7816.OFFSET_P2])) {
+                // The key reference is bad
+                ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+            } else {
+                // The mechanism is bad
+                ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+            }
         }
 
         // PRE-CONDITION 6 - The key must be an assymetric key (key pair)
@@ -1415,35 +1399,12 @@ public final class PIV {
         //
 
         // STEP 1 - Generate the key pair
-        PIVKeyObjectPKI keyPair = (PIVKeyObjectPKI)key;
+        PIVKeyObjectPKI keyPair = (PIVKeyObjectPKI) key;
         keyPair.generate();
 
         // STEP 2 - Prepare the outgoing public key
-
-        //
-        // NOTE: We only support RSA keys in the current implementation so we're just direct casting.
-        //		 Ideally we would use a factory to support multiple assymetric algorithms, but not today.
-        //
-        tlvWriter.init(scratch, (short)0, key.getKeyLength(), CONST_TAG_RESPONSE);
-
-        // Modulus
-        tlvWriter.writeTag(CONST_TAG_MODULUS);
-        tlvWriter.writeLength(keyPair.getKeyLength());
-
-        // The modulus data must be written manually because of how RSAPublicKey works
-        offset = tlvWriter.getOffset();
-        offset += keyPair.getModulus(scratch, offset);
-        tlvWriter.setOffset(offset); // Move the current position forward
-
-        // Exponent
-        tlvWriter.writeTag(CONST_TAG_EXPONENT);
-        tlvWriter.writeLength((short)3); // Hack! Why can't we get the size from RSAPublicKey?
-        offset = tlvWriter.getOffset();
-        offset += keyPair.getPublicExponent(scratch, offset);
-        tlvWriter.setOffset(offset); // Move the current position forward
-
-        length = tlvWriter.finish();
-        chainBuffer.setOutgoing(scratch, (short)0, length, true);
+        length = keyPair.marshalPublic(scratch, (short)0);
+        chainBuffer.setOutgoing(scratch, (short) 0, length, true);
 
         // Done, return the length of the object we are writing back
         return length;

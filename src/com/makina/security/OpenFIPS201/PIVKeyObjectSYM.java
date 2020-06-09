@@ -38,10 +38,10 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
     private SecretKey key;
 
     // The only element that can be updated in a symmetric key
-    public static final byte ELEMENT_KEY		= (byte)0x80;
+    public static final byte ELEMENT_KEY = (byte) 0x80;
 
     // Clear any key material from this object
-    public static final byte ELEMENT_KEY_CLEAR	= (byte)0xFF;
+    public static final byte ELEMENT_KEY_CLEAR = (byte) 0xFF;
 
     public PIVKeyObjectSYM(byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
         super(id, modeContact, modeContactless, mechanism, role);
@@ -54,44 +54,44 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
 
         switch (element) {
 
-        case ELEMENT_KEY:
-            if (key == null) allocate();
+            case ELEMENT_KEY:
+                if (key == null) allocate();
 
-            switch (key.getType()) {
+                switch (key.getType()) {
 
-            case KeyBuilder.TYPE_DES:
-                try {
-                    ((DESKey)key).setKey(buffer, offset);
-                } catch (Exception ex)  {
-                    clear();
-                    ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+                    case KeyBuilder.TYPE_DES:
+                        try {
+                            ((DESKey) key).setKey(buffer, offset);
+                        } catch (Exception ex) {
+                            clear();
+                            ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+                        }
+                        break;
+
+                    case KeyBuilder.TYPE_AES:
+                        try {
+                            ((AESKey) key).setKey(buffer, offset);
+                        } catch (Exception ex) {
+                            clear();
+                            ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+                        }
+                        break;
+
+                    default:
+                        // Error state
+                        ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+                        break;
                 }
                 break;
 
-            case KeyBuilder.TYPE_AES:
-                try {
-                    ((AESKey)key).setKey(buffer, offset);
-                } catch (Exception ex)  {
-                    clear();
-                    ISOException.throwIt(ISO7816.SW_WRONG_DATA);
-                }
+            // Clear Key
+            case ELEMENT_KEY_CLEAR:
+                clear();
                 break;
 
             default:
-                // Error state
-                ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+                ISOException.throwIt(ISO7816.SW_WRONG_DATA);
                 break;
-            }
-            break;
-
-        // Clear Key
-        case ELEMENT_KEY_CLEAR:
-            clear();
-            break;
-
-        default:
-            ISOException.throwIt(ISO7816.SW_WRONG_DATA);
-            break;
         }
     }
 
@@ -99,26 +99,26 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
 
         switch (header[HEADER_MECHANISM]) {
 
-        case PIV.ID_ALG_DEFAULT:
-        case PIV.ID_ALG_TDEA_3KEY:
-            key = (SecretKey)KeyBuilder.buildKey(KeyBuilder.TYPE_DES, KeyBuilder.LENGTH_DES3_3KEY, false);
-            break;
+            case PIV.ID_ALG_DEFAULT:
+            case PIV.ID_ALG_TDEA_3KEY:
+                key = (SecretKey) KeyBuilder.buildKey(KeyBuilder.TYPE_DES, KeyBuilder.LENGTH_DES3_3KEY, false);
+                break;
 
-        case PIV.ID_ALG_AES_128:
-            key = (SecretKey)KeyBuilder.buildKey(KeyBuilder.TYPE_AES, KeyBuilder.LENGTH_AES_128, false);
-            break;
+            case PIV.ID_ALG_AES_128:
+                key = (SecretKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES, KeyBuilder.LENGTH_AES_128, false);
+                break;
 
-        case PIV.ID_ALG_AES_192:
-            key = (SecretKey)KeyBuilder.buildKey(KeyBuilder.TYPE_AES, KeyBuilder.LENGTH_AES_192, false);
-            break;
+            case PIV.ID_ALG_AES_192:
+                key = (SecretKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES, KeyBuilder.LENGTH_AES_192, false);
+                break;
 
-        case PIV.ID_ALG_AES_256:
-            key = (SecretKey)KeyBuilder.buildKey(KeyBuilder.TYPE_AES, KeyBuilder.LENGTH_AES_256, false);
-            break;
+            case PIV.ID_ALG_AES_256:
+                key = (SecretKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES, KeyBuilder.LENGTH_AES_256, false);
+                break;
 
-        default:
-            ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
-            break;
+            default:
+                ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
+                break;
         }
     }
 
@@ -134,6 +134,9 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
 
 
     public short encrypt(Cipher cipher, byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
+        if(inLength != getBlockLength()){
+            ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+        }
         cipher.init(key, Cipher.MODE_ENCRYPT);
         return cipher.doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
     }
@@ -143,4 +146,49 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
         return cipher.doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
     }
 
+    @Override
+    public boolean isAsymmetric() {
+        return false;
+    }
+
+    @Override
+    public short getBlockLength() {
+        switch (getMechanism()) {
+
+            case PIV.ID_ALG_DEFAULT:
+            case PIV.ID_ALG_TDEA_3KEY:
+                return (short) 8;
+
+            case PIV.ID_ALG_AES_128:
+            case PIV.ID_ALG_AES_192:
+            case PIV.ID_ALG_AES_256:
+                return (short) 16;
+
+            default:
+                ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+                return (short) 0; // Keep compiler happy
+        }
+    }
+
+    @Override
+    public short getKeyLength() {
+        switch (getMechanism()) {
+            case PIV.ID_ALG_DEFAULT:
+            case PIV.ID_ALG_TDEA_3KEY:
+                return KeyBuilder.LENGTH_DES3_3KEY / 8;
+
+            case PIV.ID_ALG_AES_128:
+                return KeyBuilder.LENGTH_AES_128 / 8;
+
+            case PIV.ID_ALG_AES_192:
+                return KeyBuilder.LENGTH_AES_192 / 8;
+
+            case PIV.ID_ALG_AES_256:
+                return KeyBuilder.LENGTH_AES_256 / 8;
+
+            default:
+                ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+                return (short)0; // Keep compiler happy
+        }
+    }
 }

@@ -26,9 +26,9 @@ SOFTWARE.
 
 package com.makina.security.OpenFIPS201;
 
-import javacardx.crypto.*;
-import javacard.security.*;
 import javacard.framework.*;
+import javacard.security.RandomData;
+import javacardx.crypto.Cipher;
 
 /**
  * Provides all security and cryptographic services required by PIV, including the storage of

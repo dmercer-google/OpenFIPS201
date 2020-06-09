@@ -27,6 +27,7 @@ SOFTWARE.
 package com.makina.security.OpenFIPS201;
 
 import javacard.framework.JCSystem;
+import javacard.security.KeyBuilder;
 import javacardx.crypto.Cipher;
 import javacard.framework.*;
 
@@ -67,108 +68,39 @@ public abstract class PIVKeyObject extends PIVObject {
 
         switch (mechanism) {
 
-        case PIV.ID_ALG_DEFAULT:
-        case PIV.ID_ALG_TDEA_3KEY:
-        case PIV.ID_ALG_AES_128:
-        case PIV.ID_ALG_AES_192:
-        case PIV.ID_ALG_AES_256:
-            key = new PIVKeyObjectSYM(id, modeContact, modeContactless, mechanism, role);
-            //if (Config.FEATURE_PIV_TEST_VECTORS) ((PIVKeyObjectSYM)key).setKey(Config.TEST_VECTOR_KEY, (short)0);
-            return key;
+            case PIV.ID_ALG_DEFAULT:
+            case PIV.ID_ALG_TDEA_3KEY:
+            case PIV.ID_ALG_AES_128:
+            case PIV.ID_ALG_AES_192:
+            case PIV.ID_ALG_AES_256:
+                key = new PIVKeyObjectSYM(id, modeContact, modeContactless, mechanism, role);
+                break;
 
-        case PIV.ID_ALG_RSA_1024:
-        case PIV.ID_ALG_RSA_2048:
-            key = new PIVKeyObjectPKI(id, modeContact, modeContactless, mechanism, role);
-            return key;
+            case PIV.ID_ALG_RSA_1024:
+            case PIV.ID_ALG_RSA_2048:
+                key = new PIVKeyObjectRSA(id, modeContact, modeContactless, mechanism, role);
+                break;
 
-        default:
-            ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
-            return null; // Keep the compiler happy
+            case PIV.ID_ALG_ECC_P256:
+            case PIV.ID_ALG_ECC_P384:
+                key = new PIVKeyObjectECC(id, modeContact, modeContactless, mechanism, role);
+                break;
+
+            default:
+                ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
+                return null; // Keep the compiler happy
         }
+        return key;
     }
 
     public boolean match(byte id, byte mechanism) {
         return (header[HEADER_ID] == id && header[HEADER_MECHANISM] == mechanism);
     }
 
-    public short getBlockLength() {
-
-        switch (header[HEADER_MECHANISM]) {
-
-        case PIV.ID_ALG_DEFAULT:
-        case PIV.ID_ALG_TDEA_3KEY:
-            return (short)8;
-
-        case PIV.ID_ALG_AES_128:
-        case PIV.ID_ALG_AES_192:
-        case PIV.ID_ALG_AES_256:
-            return (short)16;
-
-        case PIV.ID_ALG_RSA_1024:
-            return (short)128;
-
-        case PIV.ID_ALG_RSA_2048:
-            return (short)256;
-
-        default:
-            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-            return (short)0; // Keep compiler happy
-        }
-    }
-
-    public short getKeyLength() {
-        switch (header[HEADER_MECHANISM]) {
-
-        case PIV.ID_ALG_DEFAULT:
-        case PIV.ID_ALG_TDEA_3KEY:
-            return (short)24;
-
-        case PIV.ID_ALG_AES_128:
-            return (short)16;
-
-        case PIV.ID_ALG_AES_192:
-            return (short)24;
-
-        case PIV.ID_ALG_AES_256:
-            return (short)32;
-
-        case PIV.ID_ALG_RSA_1024:
-            return (short)128;
-
-        case PIV.ID_ALG_RSA_2048:
-            return (short)256;
-
-        default:
-            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-            return (short)0; // Keep compiler happy
-        }
-    }
-
-    public boolean isAsymmetric() {
-
-        switch (header[HEADER_MECHANISM]) {
-
-        case PIV.ID_ALG_DEFAULT:
-        case PIV.ID_ALG_TDEA_3KEY:
-        case PIV.ID_ALG_AES_128:
-        case PIV.ID_ALG_AES_192:
-        case PIV.ID_ALG_AES_256:
-            return false;
-
-        case PIV.ID_ALG_RSA_1024:
-        case PIV.ID_ALG_RSA_2048:
-            return true;
-
-        default:
-            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-            return false; // Keep compiler happy
-        }
-    }
-
     public final byte getMechanism() {
         return header[HEADER_MECHANISM];
     }
-
+    
     public final byte getRoles() {
         return header[HEADER_ROLE];
     }
@@ -189,8 +121,11 @@ public abstract class PIVKeyObject extends PIVObject {
         return (securityFlags[FLAGS_AUTHENTICATED] == true);
     }
 
-    public abstract void updateElement(byte element, byte[] buffer, short offset, short length);
-    public abstract short encrypt(Cipher cipher, byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);
     public abstract short decrypt(Cipher cipher, byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);
+    public abstract short encrypt(Cipher cipher, byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);
+    public abstract short getBlockLength();
+    public abstract short getKeyLength();
+    public abstract boolean isAsymmetric();
+    public abstract void updateElement(byte element, byte[] buffer, short offset, short length);
 
 }
