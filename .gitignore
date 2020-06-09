@@ -83,3 +83,7 @@ Temporary Items
 .project
 .settings/*
 bin/*
+
+# IntelliJ Files
+.idea
+*.iml
