@@ -35,6 +35,8 @@ import javacard.framework.*;
  */
 public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
 
+    private static Cipher signingCipher;
+
     public final byte CONST_TAG_MODULUS = (byte) 0x81; // RSA - The modulus
     public final byte CONST_TAG_EXPONENT = (byte) 0x82; // RSA - The public exponent
 
@@ -49,23 +51,11 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
     // RSA Private Exponent
     public static final byte ELEMENT_RSA_D	= (byte)0x83;
 
-    // RSA Prime Exponent P (CRT oly)
-    public static final byte ELEMENT_RSA_P	= (byte)0x84;
-
-    // RSA Prime Exponent Q (CRT only)
-    public static final byte ELEMENT_RSA_Q	= (byte)0x85;
-
-    // RSA D mod P - 1 (CRT only)
-    public static final byte ELEMENT_RSA_DP	= (byte)0x86;
-
-    // RSA D mod Q - 1 (CRT only)
-    public static final byte ELEMENT_RSA_DQ	= (byte)0x87;
-
-    // RSA Inverse Q (CRT only)
-    public static final byte ELEMENT_RSA_PQ	= (byte)0x88;
-
     public PIVKeyObjectRSA(byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
         super(id, modeContact, modeContactless, mechanism, role);
+        if (signingCipher == null) {
+            signingCipher = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
+        }
     }
 
     @Override
@@ -189,19 +179,8 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
         if(inLength != getBlockLength()){
             ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         }
-
-        byte sigAlg = 0x00;
-        switch (inLength) {
-            case MessageDigest.LENGTH_SHA:
-                sigAlg = Signature.ALG_RSA_SHA_PKCS1;
-                break;
-            case MessageDigest.LENGTH_SHA_256:
-                sigAlg = Signature.ALG_RSA_SHA_256_PKCS1;
-                break;
-            default:
-                ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
-        }
-        return sign(sigAlg, inBuffer, inOffset, inLength, outBuffer, outOffset);
+        signingCipher.init(privateKey, Cipher.MODE_ENCRYPT);
+        return signingCipher.doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
     }
 
     @Override
@@ -228,6 +207,8 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
         return tlvWriter.finish();
     }
 
+    // TODO: We now have a proper signing algorithm so we should probably change the signing
+    // logic to use sign and change the encrypt to encrypt with the public key.
     @Override
     public short encrypt(Cipher cipher, byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
         if(inLength != getBlockLength()){
@@ -245,15 +226,8 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
 
     @Override
     public short getBlockLength() {
-        switch (getMechanism()) {
-            case PIV.ID_ALG_RSA_1024:
-                return (short)128;
-            case PIV.ID_ALG_RSA_2048:
-                return (short)256;
-            default:
-                ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-                return (short)0; // Keep compiler happy
-        }
+        // RSA blocks are the same length as their keys
+        return getKeyLength();
     }
 
     @Override

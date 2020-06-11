@@ -1042,10 +1042,10 @@ public final class PIV {
 
             // Encrypt/Sign the CHALLENGE data
             try {
-                if (key.isAsymmetric()) {
-                    length = ((PIVKeyObjectPKI) key).sign(scratch, tlvReader.getDataOffset(), challengeLength, buffer, (short) 0);
+                if (key instanceof PIVKeyObjectPKI) {
+                    length = ((PIVKeyObjectPKI) key).sign(scratch, challengeOffset, challengeLength, buffer, (short) 0);
                 } else {
-                    length = cspPIV.encrypt(key, scratch, tlvReader.getDataOffset(), challengeLength, buffer, (short) 0);
+                    length = cspPIV.encrypt(key, scratch, challengeOffset, challengeLength, buffer, (short) 0);
                 }
             } finally {
                 cspPIV.zeroise(scratch, (short)0, LENGTH_SCRATCH);

@@ -77,13 +77,7 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
 		new KeyPair(publicKey, privateKey).genKeyPair();
 	}
 
-	protected short sign(byte cipherAlgorithm, byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
-		Signature signature = Signature.getInstance(cipherAlgorithm, false);
-		signature.init(privateKey, Signature.MODE_SIGN);
-		return signature.signPreComputedHash(inBuffer, inOffset, inLength, outBuffer, outOffset);
-	}
-
+	protected abstract short sign(byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);
 	protected abstract void allocate();
-	public abstract short sign(byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);
 	public abstract short marshalPublic(byte[] scratch, short offset);
 }

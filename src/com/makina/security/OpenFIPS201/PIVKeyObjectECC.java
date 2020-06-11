@@ -35,8 +35,13 @@ import javacardx.crypto.Cipher;
  * Provides functionality for asymmetric PIV key objects
  */
 public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
+
+    private static Signature signer;
     public PIVKeyObjectECC(byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
         super(id, modeContact, modeContactless, mechanism, role);
+        if(signer == null) {
+            signer = Signature.getInstance(MessageDigest.ALG_NULL, Signature.SIG_CIPHER_ECDSA, Cipher.PAD_NULL, false);
+        }
     }
 
     public final byte ELEMENT_ECC_POINT = (byte)0x86;
@@ -144,24 +149,8 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
 
     @Override
     public short sign(byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
-        byte sigAlg = 0x00;
-        switch (inLength) {
-            case MessageDigest.LENGTH_SHA:
-                sigAlg = Signature.ALG_ECDSA_SHA;
-                break;
-            case MessageDigest.LENGTH_SHA_256:
-                sigAlg = Signature.ALG_ECDSA_SHA_256;
-                break;
-            case MessageDigest.LENGTH_SHA_384:
-                sigAlg = Signature.ALG_ECDSA_SHA_384;
-                break;
-            case MessageDigest.LENGTH_SHA_512:
-                sigAlg = Signature.ALG_ECDSA_SHA_512;
-                break;
-            default:
-                ISOException.throwIt(ISO7816.SW_WRONG_DATA);
-        }
-        return sign(sigAlg, inBuffer, inOffset, inLength, outBuffer, outOffset);
+        signer.init(privateKey, Signature.MODE_SIGN);
+        return signer.sign(inBuffer, inOffset, inLength, outBuffer, outOffset);
     }
 
     @Override
