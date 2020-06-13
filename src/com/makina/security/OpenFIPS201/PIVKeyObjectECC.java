@@ -217,7 +217,8 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
                 ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         }
 
-        tlvWriter.init(scratch, offset, keyLen, CONST_TAG_RESPONSE);
+        // adding 5 bytes to the marshaled key to account for other APDU overhead.
+        tlvWriter.init(scratch, offset, (short)(keyLen + 5), CONST_TAG_RESPONSE);
         tlvWriter.writeTag(ELEMENT_ECC_POINT);
         tlvWriter.writeLength(keyLen);
         offset = tlvWriter.getOffset();

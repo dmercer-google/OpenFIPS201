@@ -504,7 +504,9 @@ public final class PIV {
         }
 
         // PRE-CONDITION 2 - If FEATURE_PIN_OVER_CONTACTLESS is not set, the interface must be contact
-        if (!Config.FEATURE_PIN_OVER_CONTACTLESS && cspPIV.getIsContactless()) ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+        if (!Config.FEATURE_PIN_OVER_CONTACTLESS && cspPIV.getIsContactless()) {
+            ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+        }
 
         // PRE-CONDITION 3 - The supplied PIN format must be valid
         // If the key reference is '00' or '80' and the authentication data in the command data
@@ -683,7 +685,9 @@ public final class PIV {
             if (!Config.FEATURE_PIN_GLOBAL_CHANGE) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
 
             // Check whether we are allowed to operate over contactless if applicable
-            if (!Config.FEATURE_PIN_OVER_CONTACTLESS && cspPIV.getIsContactless()) ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+            if (!Config.FEATURE_PIN_OVER_CONTACTLESS && cspPIV.getIsContactless()) {
+                ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+            }
 
             pin = cspPIV.globalPIN;
             intermediateLimit = Config.PIN_RETRIES_INTERMEDIATE;
@@ -695,7 +699,9 @@ public final class PIV {
             if (!Config.FEATURE_PIN_CARD_ENABLED) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
 
             // Check whether we are allowed to operate over contactless if applicable
-            if (!Config.FEATURE_PIN_OVER_CONTACTLESS && cspPIV.getIsContactless()) ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+            if (!Config.FEATURE_PIN_OVER_CONTACTLESS && cspPIV.getIsContactless()) {
+                ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+            }
 
             pin = cspPIV.cardPIN;
             intermediateLimit = Config.PIN_RETRIES_INTERMEDIATE;
@@ -709,7 +715,9 @@ public final class PIV {
             if (!Config.FEATURE_PUK_CHANGE) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
 
             // Check whether we are allowed to operate over contactless if applicable
-            if (!Config.FEATURE_PUK_OVER_CONTACTLESS && cspPIV.getIsContactless()) ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+            if (!Config.FEATURE_PUK_OVER_CONTACTLESS && cspPIV.getIsContactless()) {
+                ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+            }
 
             pin = cspPIV.cardPUK;
             intermediateLimit = Config.PUK_RETRIES_INTERMEDIATE;
@@ -1033,7 +1041,6 @@ public final class PIV {
         if ((challengeOffset != 0 && !challengeEmpty) && (responseOffset != 0 && responseEmpty)) {
             // Reset any other authentication intermediate state
             authenticateReset();
-
             // Validate that the key has the correct role for this operation
             if (!key.hasRole(PIVKeyObject.ROLE_AUTH_INTERNAL)) {
                 cspPIV.zeroise(scratch, (short)0, LENGTH_SCRATCH);

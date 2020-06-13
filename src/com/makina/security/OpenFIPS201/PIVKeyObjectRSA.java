@@ -156,18 +156,17 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
         short keyLength = 0;
         // Generate the appropriate key(s)
         switch (header[HEADER_MECHANISM]) {
+            case PIV.ID_ALG_RSA_1024:
+                keyLength = KeyBuilder.LENGTH_RSA_1024;
+                break;
 
-        case PIV.ID_ALG_RSA_1024:
-            keyLength = KeyBuilder.LENGTH_RSA_1024;
-            break;
+            case PIV.ID_ALG_RSA_2048:
+                keyLength = KeyBuilder.LENGTH_RSA_2048;
+                break;
 
-        case PIV.ID_ALG_RSA_2048:
-            keyLength = KeyBuilder.LENGTH_RSA_2048;
-            break;
-
-        default:
-            ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
-            break;
+            default:
+                ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
+                break;
         }
 
         privateKey = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, keyLength, false);
@@ -186,7 +185,8 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
     @Override
     public short marshalPublic(byte[] scratch, short offset) {
         TLVWriter tlvWriter = new TLVWriter();
-        tlvWriter.init(scratch, (short) 0, getKeyLength(), CONST_TAG_RESPONSE);
+        // Adding 12 to the key length to account for other overhead
+        tlvWriter.init(scratch, offset, (short)(getKeyLength()*2 + 12), CONST_TAG_RESPONSE);
 
         // Modulus
         tlvWriter.writeTag(CONST_TAG_MODULUS);
@@ -199,7 +199,7 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
 
         // Exponent
         tlvWriter.writeTag(CONST_TAG_EXPONENT);
-        tlvWriter.writeLength((short) 3); // Hack! Why can't we get the size from RSAPublicKey?
+        tlvWriter.writeLength((short)3); // Hack! Why can't we get the size from RSAPublicKey?
         offset = tlvWriter.getOffset();
         offset += getPublicExponent(scratch, offset);
         tlvWriter.setOffset(offset); // Move the current position forward
