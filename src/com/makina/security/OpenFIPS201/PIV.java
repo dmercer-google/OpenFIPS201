@@ -248,8 +248,6 @@ public final class PIV {
     public short getData(byte[] buffer, short offset, short length) {
 
         final byte CONST_TAG 		= (byte)0x5C;
-        final byte CONST_TAG_MIN 	= (byte)0x01;
-        final byte CONST_TAG_MAX 	= (byte)0x03;
 
         final byte CONST_TAG_DISCOVERY		= (byte)0x7E;
         final byte CONST_TAG_BIOMETRIC_1	= (byte)0x7F;
@@ -259,6 +257,7 @@ public final class PIV {
 
         final short CONST_LEN_DISCOVERY	= (short)0x01;
         final short CONST_LEN_BIOMETRIC	= (short)0x02;
+        final short CONST_LEN_NORMAL	= (short)0x03;
 
         //
         // PRE-CONDITIONS
@@ -268,10 +267,6 @@ public final class PIV {
         // NOTE: This is parsed manually rather than going through a TLV parser
         if (buffer[offset++] != CONST_TAG) ISOException.throwIt(ISO7816.SW_WRONG_DATA); // Check SW12
 
-        // PRE-CONDITION 2 - The 'LENGTH' data element must be between CONST_TAG_MIN and CONST_TAG_MAX
-        length = (short)(buffer[offset++] & 0xFF);
-        if (length < CONST_TAG_MIN || length > CONST_TAG_MAX) ISOException.throwIt(ISO7816.SW_WRONG_DATA); // Check SW12
-
         //
         // Retrieve the data object TAG identifier
         // NOTE: All objects in the datastore have had their tag reduced to one byte, which is
@@ -280,28 +275,45 @@ public final class PIV {
 
         byte id = 0;
 
-        // SPECIAL OBJECT - DISCOVERY OBJECT
-        if ((length == (short)1) && buffer[offset] == CONST_TAG_DISCOVERY) {
-            id = CONST_TAG_DISCOVERY;
-        }
+		switch (buffer[offset]) {
+			
+		//
+		// SPECIAL CASE 1 - DISCOVERY OBJECT
+		//		
+		case CONST_LEN_DISCOVERY:
+			offset++; // Move to the 1st byte of the tag			
+			if (buffer[offset] != CONST_TAG_DISCOVERY) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
+			id = CONST_TAG_DISCOVERY; // Store it as our object ID
+			break;
+			
+		//
+		// SPECIAL CASE 2 - BIOMETRIC INFORMATION TEMPLATE
+		//		
+		case CONST_LEN_BIOMETRIC:
+			offset++; // Move to the 1st byte of the tag			
+			if (buffer[offset] != CONST_TAG_BIOMETRIC_1) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
+			offset++; // Move to the 2nd byte
+			if (buffer[offset] != CONST_TAG_BIOMETRIC_2) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
+			id = CONST_TAG_BIOMETRIC_2; // Store it as our object ID
+			break;
+			
+		//
+		// ALL OTHER OBJECTS
+		//
+		case CONST_LEN_NORMAL:
+			offset++; // Move to the 1st byte of the tag			
+			if (buffer[offset] != CONST_TAG_NORMAL_1) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
+			offset++; // Move to the 2nd byte
+			if (buffer[offset] != CONST_TAG_NORMAL_2) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
+			offset++; // Move to the 3rd byte
+			id = buffer[offset]; // Store it as our object ID
+			break;
 
-        // SPECIAL OBJECT - BIOMETRIC GROUP TEMPLATE
-        else if ((length == (short)2) && buffer[offset] == CONST_TAG_BIOMETRIC_1) {
-            offset++;
-            if (buffer[offset] != CONST_TAG_BIOMETRIC_2) ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
-            id = CONST_TAG_BIOMETRIC_2;
-        }
-        // ALL OTHER OBJECTS
-        else if ((length == (short)3) && buffer[offset] == CONST_TAG_NORMAL_1) {
-            offset++; // Move to the 2nd byte
-            if (buffer[offset] != CONST_TAG_NORMAL_2) ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
-            offset++; // Move to the 3rd byte
-            id = buffer[offset]; // Store it as our object ID
-        }
-        // Invalid Object
-        else {
-            ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
-        }
+		default:
+			// Unsupported length supplied
+			ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+			break;
+		}
 
         PIVDataObject data = findDataObject(id);
         if (data == null) {
@@ -355,8 +367,6 @@ public final class PIV {
     public void putData(byte[] buffer, short offset, short length) {
 
         final byte CONST_TAG 		= (byte)0x5C;
-        final byte CONST_TAG_MIN 	= (byte)0x01;
-        final byte CONST_TAG_MAX 	= (byte)0x03;
         final byte CONST_DATA		= (byte)0x53;
 
         final byte CONST_TAG_DISCOVERY		= (byte)0x7E;
@@ -367,6 +377,7 @@ public final class PIV {
 
         final short CONST_LEN_DISCOVERY	= (short)0x01;
         final short CONST_LEN_BIOMETRIC	= (short)0x02;
+        final short CONST_LEN_NORMAL	= (short)0x03;
 
         //
         // PRE-CONDITIONS
@@ -380,62 +391,67 @@ public final class PIV {
             ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
         }
 
+
+        // PRE-CONDITION 2 - The TAG LIST value must be present
+        if (buffer[offset++] != CONST_TAG) {
+            ISOException.throwIt(SW_REFERENCE_NOT_FOUND);	        
+        }
+
+		//
+		// Retrieve the data object TAG identifier
+		// NOTE: All objects in the datastore have had their tag reduced to one byte, which is
+		//		 always the least significant byte of the tag.
+		//		
         byte id = 0;
+		
+		switch (buffer[offset]) {
+			
+		//
+		// SPECIAL CASE 1 - DISCOVERY OBJECT
+		//		
+		case CONST_LEN_DISCOVERY:
+			offset++; // Move to the 1st byte of the tag			
+			if (buffer[offset] != CONST_TAG_DISCOVERY) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
+			id = CONST_TAG_DISCOVERY; // Store it as our object ID
+			break;
+			
+		//
+		// SPECIAL CASE 2 - BIOMETRIC INFORMATION TEMPLATE
+		//		
+		case CONST_LEN_BIOMETRIC:
+			offset++; // Move to the 1st byte of the tag			
+			if (buffer[offset] != CONST_TAG_BIOMETRIC_1) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
+			offset++; // Move to the 2nd byte
+			if (buffer[offset] != CONST_TAG_BIOMETRIC_2) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
+			id = CONST_TAG_BIOMETRIC_2; // Store it as our object ID
+			break;
+			
+		//
+		// ALL OTHER OBJECTS
+		//
+		case CONST_LEN_NORMAL:
+			offset++; // Move to the 1st byte of the tag			
+			if (buffer[offset] != CONST_TAG_NORMAL_1) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
+			offset++; // Move to the 2nd byte
+			if (buffer[offset] != CONST_TAG_NORMAL_2) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
+			offset++; // Move to the 3rd byte
+			id = buffer[offset]; // Store it as our object ID
+			break;
 
-        // SPECIAL OBJECT - DISCOVERY OBJECT
-        // PRE-CONDITION 2A - If the special 'DISCOVERY OBJECT' is being written, the tag specified by
-        //					  CONST_TAG_DISCOVERY must be present
-        if (buffer[offset] == CONST_TAG_DISCOVERY) {
-            id = CONST_TAG_DISCOVERY;
-            // We don't move the buffer for this special object to include the special data object tag
-        }
+		default:
+			// Unsupported length supplied
+			ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+			break;
+		}
 
-        // SPECIAL OBJECT - BIOMETRIC GROUP TEMPLATE
-        // PRE-CONDITION 2B - If the special 'BIOMETRIC GROUP TEMPLATE' is being written, the tag values
-        //					  specified by CONST_TAG_BIOMETRIC_1 and CONST_TAG_BIOMETRIC_2 must be present
-        else if (buffer[offset] == CONST_TAG_BIOMETRIC_1) {
-            if ((short)(buffer[offset] + 1) != CONST_TAG_BIOMETRIC_2) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
-            id = CONST_TAG_BIOMETRIC_2;
-            // We don't move the buffer for this special object to include the special data object tag
-        }
+		offset++; // Move to the DATA element
 
-        //
-        // ALL OTHER OBJECTS (Must have the TAG LIST value)
-        //
-        else if (buffer[offset] == CONST_TAG) {
-
-            //
-            // Retrieve the data object TAG identifier
-            // NOTE: All objects in the datastore have had their tag reduced to one byte, which is
-            //		 always the least significant byte of the tag.
-            //
-
-            offset++; // Move to the length field
-
-            // PRE-CONDITION 3 - The 'TAG LIST' tag must have a length of between CONST_TAG_MIN and CONST_TAG_MAX
-            if (buffer[offset] < CONST_TAG_MIN || buffer[offset] > CONST_TAG_MAX) {
-                ISOException.throwIt(ISO7816.SW_WRONG_DATA);
-            }
-
-            offset++; // Move to the 1st byte of the tag
-            if (buffer[offset] != CONST_TAG_NORMAL_1) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
-            offset++; // Move to the 2nd byte
-            if (buffer[offset] != CONST_TAG_NORMAL_2) ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
-            offset++; // Move to the 3rd byte
-            id = buffer[offset]; // Store it as our object ID
-            offset++; // Move to the DATA element
-
-            // PRE-CONDITION 4 - The 'DATA' tag must be present in the supplied buffer
-            if (buffer[offset] != CONST_DATA) {
-                ISOException.throwIt(ISO7816.SW_WRONG_DATA);
-            }
-            // The offset now holds the correct position for writing the object, including the DATA tag
-        }
-        // Invalid Object
-        else {
-            ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
-        }
-
+		// PRE-CONDITION 4 - The 'DATA' tag must be present in the supplied buffer
+		if (buffer[offset] != CONST_DATA) {
+			ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+		}
+		
+		// The offset now holds the correct position for writing the object, including the DATA tag
 
         // PRE-CONDITION 5 - The tag supplied in the 'TAG LIST' element must exist in the data store
         PIVDataObject obj = findDataObject(id);
@@ -672,7 +688,6 @@ public final class PIV {
         // NOTE: This is handled in the switch statement and is configurable at compile-time
 
         OwnerPIN pin = null;
-        boolean pinAlways = false;
         byte intermediateLimit = (byte)0;
 
         switch (id) {
@@ -800,7 +815,7 @@ public final class PIV {
         pin.check(buffer, offset, Config.PIN_LENGTH_MAX);
 
         // STEP 3 - Set the PIN ALWAYS flag as this is now verified
-        if (pinAlways) cspPIV.setPINAlways(true);
+        cspPIV.setPINAlways(true);
 
         // Done
     }
@@ -903,6 +918,13 @@ public final class PIV {
     }
 
     /**
+     * Resets the PIN ALWAYS security status
+     */
+    public void resetPinAlways() {
+    	cspPIV.setPINAlways(false);
+    }
+
+    /**
      * Clears any intermediate authentication status used by 'GENERAL AUTHENTICATE'
      */
     private void authenticateReset() {
@@ -935,8 +957,8 @@ public final class PIV {
         // COMMAND CHAIN HANDLING
         //
 
-        // Pass the APDU to the chainBuffer instance first. It will return zero if there is store more
-        // to of the chain to process, otherwise it will return the length of the large CDATA buffer
+        // Pass the APDU to the chainBuffer instance first. It will return zero if there is more
+        // of the chain to process, otherwise it will return the length of the large CDATA buffer
         length = chainBuffer.processIncomingAPDU(buffer, offset, length, scratch, (short)0);
 
         // If the length is zero, just return so the caller can keep sending
@@ -957,20 +979,22 @@ public final class PIV {
         if (key == null) {
             // If any key reference value is specified that is not supported by the card, the PIV Card Application
             // shall return the status word '6A 88'.
+            cspPIV.setPINAlways(false); // Clear the PIN ALWAYS flag            
             cspPIV.zeroise(scratch, (short)0, LENGTH_SCRATCH);
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
         }
 
-        // PRE-CONDITION 2 - The key's value must have been set
-        if (!key.isInitialised()) {
-            cspPIV.zeroise(scratch, (short)0, LENGTH_SCRATCH);
-            ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
-        }
-
-        // PRE-CONDITION 3 - The access rules must be satisfied for the requested key
+        // PRE-CONDITION 2 - The access rules must be satisfied for the requested key
+        // NOTE: A call to this method automatically clears the PIN ALWAYS status.
         if (!cspPIV.checkAccessModeObject(key)) {
             cspPIV.zeroise(scratch, (short)0, LENGTH_SCRATCH);
             ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+        }
+
+        // PRE-CONDITION 3 - The key's value must have been set
+        if (!key.isInitialised()) {
+            cspPIV.zeroise(scratch, (short)0, LENGTH_SCRATCH);
+            ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
         }
 
         // PRE-CONDITION 4 - The Dynamic Authentication Template tag must be present in the data
@@ -1546,28 +1570,34 @@ public final class PIV {
         // Initialise our TLV reader
         tlvReader.init(scratch, (short)0, length);
 
-
         //
         // PRE-CONDITIONS
         //
 
         // PRE-CONDITION 1 - The 'COMMAND' constructed tag must be present
-        if (!tlvReader.match(CONST_TAG_COMMAND)) ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+        if (!tlvReader.match(CONST_TAG_COMMAND)) {
+            ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+        }
+        
+        // PRE-CONDITION 2 - The SEQUENCE length must be smaller than the APDU data length
+        if (tlvReader.getLength() > length) {
+            ISOException.throwIt(ISO7816.SW_WRONG_DATA);	        
+        }  
 
         // Move into the constructed tag
         tlvReader.moveInto();
 
-        // PRE-CONDITION 2 - The mandatory 'OPERATION' tag must be present with length 1
+        // PRE-CONDITION 3 - The mandatory 'OPERATION' tag must be present with length 1
         if (!tlvReader.match(CONST_TAG_OPERATION)) ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         byte operation = tlvReader.toByte();
 
-        // PRE-CONDITION 3 - The 'OPERATION' value must be set to the value CONST_OP_DATA or CONST_OP_KEY
+        // PRE-CONDITION 4 - The 'OPERATION' value must be set to the value CONST_OP_DATA or CONST_OP_KEY
         if (operation != CONST_OP_DATA && operation != CONST_OP_KEY) ISOException.throwIt(ISO7816.SW_WRONG_DATA);
 
         // Move to the next tag
         tlvReader.moveNext();
 
-        // PRE-CONDITION 4 - The 'ID' value must be present with length 1
+        // PRE-CONDITION 5 - The 'ID' value must be present with length 1
         if (!tlvReader.match(CONST_TAG_ID)) ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         if (tlvReader.getLength() != (short)1) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
         byte id = tlvReader.toByte();
@@ -1575,7 +1605,7 @@ public final class PIV {
         // Move to the next tag
         tlvReader.moveNext();
 
-        // PRE-CONDITION 5 - The 'MODE CONTACT' value must be present with length 1
+        // PRE-CONDITION 6 - The 'MODE CONTACT' value must be present with length 1
         if (!tlvReader.match(CONST_TAG_MODE_CONTACT)) ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         if (tlvReader.getLength() != (short)1) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
         byte modeContact = tlvReader.toByte();
@@ -1583,7 +1613,7 @@ public final class PIV {
         // Move to the next tag
         tlvReader.moveNext();
 
-        // PRE-CONDITION 6 - The 'MODE CONTACTLESS' value must be present with length 1
+        // PRE-CONDITION 7 - The 'MODE CONTACTLESS' value must be present with length 1
         if (!tlvReader.match(CONST_TAG_MODE_CONTACTLESS)) ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         if (tlvReader.getLength() != (short)1) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
         byte modeContactless = tlvReader.toByte();
@@ -1596,7 +1626,7 @@ public final class PIV {
 
         if (CONST_OP_KEY == operation) {
 
-            // PRE-CONDITION 7a - If the operation is CONST_OP_KEY, then the 'KEY MECHANISM' tag
+            // PRE-CONDITION 8a - If the operation is CONST_OP_KEY, then the 'KEY MECHANISM' tag
             //					 must be present with length 1
             if (!tlvReader.match(CONST_TAG_KEY_MECHANISM)) ISOException.throwIt(ISO7816.SW_WRONG_DATA);
             if (tlvReader.getLength() != (short)1) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
@@ -1605,14 +1635,14 @@ public final class PIV {
             // Move to the next tag
             tlvReader.moveNext();
 
-            // PRE-CONDITION 8a - If the operation is CONST_OP_KEY, then the 'KEY ROLE' tag
+            // PRE-CONDITION 8b - If the operation is CONST_OP_KEY, then the 'KEY ROLE' tag
             //					 must be present with length 1
 
             if (!tlvReader.match(CONST_TAG_KEY_ROLE)) ISOException.throwIt(ISO7816.SW_WRONG_DATA);
             if (tlvReader.getLength() != (short)1) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
             keyRole = tlvReader.toByte();
 
-            // PRE-CONDITION 9a - If 'OPERATION' is set to CONST_OP_KEY, the key referenced by the 'id' and
+            // PRE-CONDITION 8c - If 'OPERATION' is set to CONST_OP_KEY, the key referenced by the 'id' and
             //					  'mechanism' values must not already exist in the key store
             if (cspPIV.selectKey(id, keyMechanism) != null) {
                 ISOException.throwIt(ISO7816.SW_FILE_FULL);
@@ -1620,7 +1650,7 @@ public final class PIV {
 
         } else { //(CONST_OP_DATA == operation)
 
-            // PRE-CONDITION 7b - If 'OPERATION' is set to CONST_OP_DATA, the object referenced by 'id' value
+            // PRE-CONDITION 8d - If 'OPERATION' is set to CONST_OP_DATA, the object referenced by 'id' value
             // 					 must not already exist in the data store
             PIVObject obj = firstDataObject;
             while (obj != null) {
@@ -1703,7 +1733,6 @@ public final class PIV {
         // If we got this far, the scratch buffer now contains the incoming DATA. Keep in mind that the original buffer
         // still contains the APDU header.
 
-
         //
         // PIN cases
         //
@@ -1742,14 +1771,24 @@ public final class PIV {
             ISOException.throwIt(SW_REFERENCE_NOT_FOUND);
         }
 
+		// PRE-CONDITION 2 - The key object must not have the ROLE_GENERATE_ONLY role flag
+		if (key.hasRole(PIVKeyObject.ROLE_GENERATE_ONLY)) {
+			ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+		}
+		
         // Set up our TLV reader
         tlvReader.init(scratch, (short)0, length);
 
-        // PRE-CONDITION 2 - The sequence tag must be present in the data
-        if (!tlvReader.find(CONST_TAG_SEQUENCE)) {
+        // PRE-CONDITION 2 - The parent tag must by of type SEQUENCE
+        if (!tlvReader.match(CONST_TAG_SEQUENCE)) {
             ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         }
-
+        
+        // PRE-CONDITION 3 - The SEQUENCE length must be smaller than the APDU data length
+        if (tlvReader.getLength() > length) {
+            ISOException.throwIt(ISO7816.SW_WRONG_DATA);	        
+        }  
+        
         // Move to the child tag
         tlvReader.moveInto();
 
@@ -1794,7 +1833,7 @@ public final class PIV {
         // Create our new key
         PIVDataObject data = new PIVDataObject(id, modeContact, modeContactless);
 
-        // Check if this is the first key added
+        // Check if this is the first data object added
         if (firstDataObject == null) {
             firstDataObject = data;
             return;
