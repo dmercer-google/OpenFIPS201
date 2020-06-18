@@ -37,13 +37,9 @@ import javacardx.crypto.Cipher;
  */
 public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
 
-    private static Signature signer;
-
     public PIVKeyObjectECC(byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
         super(id, modeContact, modeContactless, mechanism, role);
-        if (signer == null) {
-            signer = Signature.getInstance(MessageDigest.ALG_NULL, Signature.SIG_CIPHER_ECDSA, Cipher.PAD_NULL, false);
-        }
+        signer = Signature.getInstance(MessageDigest.ALG_NULL, Signature.SIG_CIPHER_ECDSA, Cipher.PAD_NULL, false);
     }
 
     public final byte ELEMENT_ECC_POINT = (byte) 0x86;
@@ -160,12 +156,6 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
             privateKey = (ECPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_EC_FP_PRIVATE, keyLength, false);
         }
         setParams();
-    }
-
-    @Override
-    public short sign(byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
-    	signer.init(privateKey, Signature.MODE_SIGN);
-        return signer.sign(inBuffer, inOffset, inLength, outBuffer, outOffset);
     }
 
     @Override

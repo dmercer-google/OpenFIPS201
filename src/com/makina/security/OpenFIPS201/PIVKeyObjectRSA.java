@@ -35,7 +35,7 @@ import javacard.framework.*;
  */
 public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
 
-    private static Cipher signingCipher;
+    private static Cipher rsaSigningCipher;
 
     public final byte CONST_TAG_MODULUS = (byte) 0x81; // RSA - The modulus
     public final byte CONST_TAG_EXPONENT = (byte) 0x82; // RSA - The public exponent
@@ -53,8 +53,16 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
 
     public PIVKeyObjectRSA(byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
         super(id, modeContact, modeContactless, mechanism, role);
-        if (signingCipher == null) {
-            signingCipher = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
+        
+        // We should probably provide a feature flag here.
+        try {
+            signer = Signature.getInstance(MessageDigest.ALG_NULL, Signature.SIG_CIPHER_RSA, Cipher.PAD_NULL, false);
+        } catch (CryptoException e){
+            if (e.getReason() == CryptoException.NO_SUCH_ALGORITHM){
+                rsaSigningCipher = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
+            } else {
+                throw e;
+            }
         }
     }
 
@@ -178,8 +186,14 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
         if(inLength != getBlockLength()){
             ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         }
-        signingCipher.init(privateKey, Cipher.MODE_ENCRYPT);
-        return signingCipher.doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
+        short length;
+        if(signer != null){
+            length = super.sign(inBuffer, inOffset, inLength, outBuffer, outOffset);
+        } else {
+            rsaSigningCipher.init(privateKey, Cipher.MODE_ENCRYPT);
+            length = rsaSigningCipher.doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
+        }
+        return length;
     }
 
     @Override
