@@ -28,6 +28,7 @@ package com.makina.security.OpenFIPS201;
 
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
+import javacard.framework.JCSystem;
 import javacard.security.*;
 import javacardx.crypto.Cipher;
 
@@ -37,15 +38,16 @@ import javacardx.crypto.Cipher;
 public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
 
     private static Signature signer;
+
     public PIVKeyObjectECC(byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
         super(id, modeContact, modeContactless, mechanism, role);
-        if(signer == null) {
+        if (signer == null) {
             signer = Signature.getInstance(MessageDigest.ALG_NULL, Signature.SIG_CIPHER_ECDSA, Cipher.PAD_NULL, false);
         }
     }
 
-    public final byte ELEMENT_ECC_POINT = (byte)0x86;
-    public final byte ELEMENT_ECC_SECRET = (byte)0x87;
+    public final byte ELEMENT_ECC_POINT = (byte) 0x86;
+    public final byte ELEMENT_ECC_SECRET = (byte) 0x87;
 
     // From SP 800-73-4 Part 2 3.3.2
     private static final byte CONST_POINT_UNCOMPRESSED = (byte) 0x04;
@@ -85,9 +87,14 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
                     ISOException.throwIt(ISO7816.SW_WRONG_DATA);
                 }
 
-                if (publicKey == null) {
-                    allocate();
+                if (publicKey != null) {
+                    publicKey.clearKey();
+                    publicKey = null;
+                    if (JCSystem.isObjectDeletionSupported()) {
+                        JCSystem.requestObjectDeletion();
+                    }
                 }
+                allocate();
                 ((ECPublicKey) publicKey).setW(buffer, offset, length);
                 break;
 
@@ -108,9 +115,15 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
                         ISOException.throwIt(ISO7816.SW_WRONG_DATA);
                         break;
                 }
-                if (privateKey == null) {
-                    allocate();
+
+                if (privateKey != null) {
+                    privateKey.clearKey();
+                    privateKey = null;
+                    if (JCSystem.isObjectDeletionSupported()) {
+                        JCSystem.requestObjectDeletion();
+                    }
                 }
+                allocate();
                 ((ECPrivateKey) privateKey).setS(buffer, offset, length);
                 break;
 
@@ -132,24 +145,26 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
             case PIV.ID_ALG_ECC_P256:
                 keyLength = KeyBuilder.LENGTH_EC_FP_256;
                 break;
-
             case PIV.ID_ALG_ECC_P384:
                 keyLength = KeyBuilder.LENGTH_EC_FP_384;
                 break;
-
             default:
                 ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
                 break;
         }
 
-        publicKey = (ECPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_EC_FP_PUBLIC, keyLength, false);
-        privateKey = (ECPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_EC_FP_PRIVATE, keyLength, false);
+        if(publicKey == null) {
+            publicKey = (ECPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_EC_FP_PUBLIC, keyLength, false);
+        }
+        if(privateKey == null) {
+            privateKey = (ECPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_EC_FP_PRIVATE, keyLength, false);
+        }
         setParams();
     }
 
     @Override
     public short sign(byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
-        signer.init(privateKey, Signature.MODE_SIGN);
+    	signer.init(privateKey, Signature.MODE_SIGN);
         return signer.sign(inBuffer, inOffset, inLength, outBuffer, outOffset);
     }
 
@@ -186,23 +201,21 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
         byte[] g = params.getG();
         byte[] p = params.getP();
         byte[] r = params.getN();
-        short h = params.getH();
 
         ((ECPublicKey) publicKey).setA(a, (short) 0, (short) (a.length));
         ((ECPublicKey) publicKey).setB(b, (short) 0, (short) (b.length));
         ((ECPublicKey) publicKey).setG(g, (short) 0, (short) (g.length));
         ((ECPublicKey) publicKey).setR(r, (short) 0, (short) (r.length));
         ((ECPublicKey) publicKey).setFieldFP(p, (short) 0, (short) (p.length));
-        ((ECPublicKey) publicKey).setK(h);
 
         ((ECPrivateKey) privateKey).setA(a, (short) 0, (short) (a.length));
         ((ECPrivateKey) privateKey).setB(b, (short) 0, (short) (b.length));
         ((ECPrivateKey) privateKey).setG(g, (short) 0, (short) (g.length));
         ((ECPrivateKey) privateKey).setR(r, (short) 0, (short) (r.length));
         ((ECPrivateKey) privateKey).setFieldFP(p, (short) 0, (short) (p.length));
-        ((ECPrivateKey) privateKey).setK(h);
     }
-    public short marshalPublic(byte[] scratch, short offset){
+
+    public short marshalPublic(byte[] scratch, short offset) {
         TLVWriter tlvWriter = new TLVWriter();
 
         short keyLen = (short) 0;
@@ -218,7 +231,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
         }
 
         // adding 5 bytes to the marshaled key to account for other APDU overhead.
-        tlvWriter.init(scratch, offset, (short)(keyLen + 5), CONST_TAG_RESPONSE);
+        tlvWriter.init(scratch, offset, (short) (keyLen + 5), CONST_TAG_RESPONSE);
         tlvWriter.writeTag(ELEMENT_ECC_POINT);
         tlvWriter.writeLength(keyLen);
         offset = tlvWriter.getOffset();
@@ -230,6 +243,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
 
     /**
      * ECC Keys don't have a block length
+     *
      * @throws ISOException reason = SW_FUNC_NOT_SUPPORTED
      */
     @Override
@@ -250,5 +264,24 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
                 ISOException.throwIt(ISO7816.SW_DATA_INVALID);
                 return (short) 0; // Keep compiler happy
         }
+    }
+
+    @Override
+    public void generate() {
+        if(privateKey != null){
+            privateKey.clearKey();
+            privateKey = null;
+        }
+
+        if (publicKey != null){
+            publicKey.clearKey();
+            publicKey = null;
+        }
+
+        if(JCSystem.isObjectDeletionSupported()){
+            JCSystem.requestObjectDeletion();
+        }
+        allocate();
+        super.generate();
     }
 }

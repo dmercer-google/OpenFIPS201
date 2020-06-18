@@ -1024,7 +1024,6 @@ public final class PIV {
             if (tlvReader.match(CONST_TAG_CHALLENGE)) {
                 challengeOffset = tlvReader.getOffset();
                 challengeEmpty = tlvReader.isNull();
-                challengeLength = tlvReader.getLength();
             } else if (tlvReader.match(CONST_TAG_CHALLENGE_RESPONSE)) {
                 responseOffset = tlvReader.getOffset();
                 responseEmpty = tlvReader.isNull();
@@ -1072,11 +1071,12 @@ public final class PIV {
             }
 
             // Encrypt/Sign the CHALLENGE data
+            tlvReader.setOffset(challengeOffset);
             try {
                 if (key instanceof PIVKeyObjectPKI) {
-                    length = ((PIVKeyObjectPKI) key).sign(scratch, challengeOffset, challengeLength, buffer, (short) 0);
+                    length = ((PIVKeyObjectPKI) key).sign(scratch, tlvReader.getDataOffset(), tlvReader.getLength(), buffer, (short) 0);
                 } else {
-                    length = cspPIV.encrypt(key, scratch, challengeOffset, challengeLength, buffer, (short) 0);
+                    length = cspPIV.encrypt(key, scratch, tlvReader.getDataOffset(), tlvReader.getLength(), buffer, (short) 0);
                 }
             } finally {
                 cspPIV.zeroise(scratch, (short)0, LENGTH_SCRATCH);

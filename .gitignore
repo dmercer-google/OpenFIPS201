@@ -100,3 +100,4 @@ bin/*
 # IntelliJ Files
 .idea
 *.iml
+.metadata
