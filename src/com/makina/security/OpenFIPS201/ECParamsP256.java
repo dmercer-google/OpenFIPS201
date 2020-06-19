@@ -72,9 +72,6 @@ final class ECParamsP256 extends ECParams {
 			(byte) 0x9E, (byte) 0x84, (byte) 0xF3, (byte) 0xB9, (byte) 0xCA, (byte) 0xC2, (byte) 0xFC, (byte) 0x63,
 			(byte) 0x25, (byte) 0x51 };
 
-	// Cofactor
-	private static final short h = 0x01;
-
 	@Override
 	protected byte[] getA() {
 		return a;

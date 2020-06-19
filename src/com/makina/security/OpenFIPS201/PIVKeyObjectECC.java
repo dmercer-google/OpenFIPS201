@@ -39,7 +39,6 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
 
     public PIVKeyObjectECC(byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
         super(id, modeContact, modeContactless, mechanism, role);
-        signer = Signature.getInstance(MessageDigest.ALG_NULL, Signature.SIG_CIPHER_ECDSA, Cipher.PAD_NULL, false);
     }
 
     public final byte ELEMENT_ECC_POINT = (byte) 0x86;
@@ -50,8 +49,8 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     // Uncompressed ECC public keys are marshaled as the concatenation of:
     // CONST_POINT_UNCOMPRESSED | X | Y
     // where the length of the X and Y coordinates is the byte length of the key.
-    private static final short CONST_MARSHALLED_PUB_KEY_LEN_P256 = (short) ((KeyBuilder.LENGTH_EC_FP_256 / 8) * 2 + 1);
-    private static final short CONST_MARSHALLED_PUB_KEY_LEN_P384 = (short) ((KeyBuilder.LENGTH_EC_FP_384 / 8) * 2 + 1);
+    public static final short CONST_MARSHALLED_PUB_KEY_LEN_P256 = (short) ((KeyBuilder.LENGTH_EC_FP_256 / 8) * 2 + 1);
+    public static final short CONST_MARSHALLED_PUB_KEY_LEN_P384 = (short) ((KeyBuilder.LENGTH_EC_FP_384 / 8) * 2 + 1);
 
 
     @Override
@@ -149,10 +148,10 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
                 break;
         }
 
-        if(publicKey == null) {
+        if (publicKey == null) {
             publicKey = (ECPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_EC_FP_PUBLIC, keyLength, false);
         }
-        if(privateKey == null) {
+        if (privateKey == null) {
             privateKey = (ECPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_EC_FP_PRIVATE, keyLength, false);
         }
         setParams();
@@ -197,12 +196,40 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
         ((ECPublicKey) publicKey).setG(g, (short) 0, (short) (g.length));
         ((ECPublicKey) publicKey).setR(r, (short) 0, (short) (r.length));
         ((ECPublicKey) publicKey).setFieldFP(p, (short) 0, (short) (p.length));
+        ((ECPublicKey) publicKey).setK(params.getH());
 
-        ((ECPrivateKey) privateKey).setA(a, (short) 0, (short) (a.length));
-        ((ECPrivateKey) privateKey).setB(b, (short) 0, (short) (b.length));
-        ((ECPrivateKey) privateKey).setG(g, (short) 0, (short) (g.length));
-        ((ECPrivateKey) privateKey).setR(r, (short) 0, (short) (r.length));
-        ((ECPrivateKey) privateKey).setFieldFP(p, (short) 0, (short) (p.length));
+        ((ECPrivateKey) privateKey).copyDomainParametersFrom((ECKey) publicKey);
+    }
+
+    public short doEcdh(byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
+        switch (getMechanism()) {
+            case PIV.ID_ALG_ECC_P256:
+                if (CONST_MARSHALLED_PUB_KEY_LEN_P256 != inLength) {
+                    ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+                }
+                break;
+            case PIV.ID_ALG_ECC_P384:
+                if (CONST_MARSHALLED_PUB_KEY_LEN_P384 != inLength) {
+                    ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+                }
+                break;
+            default:
+                ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+        }
+
+        if (keyAgreement == null) {
+            keyAgreement = KeyAgreement.getInstance(KeyAgreement.ALG_EC_SVDP_DH_PLAIN, false);
+        }
+        keyAgreement.init(privateKey);
+        return keyAgreement.generateSecret(inBuffer, inOffset, inLength, outBuffer, outOffset);
+    }
+
+    @Override
+    public short sign(byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
+        if (signer == null) {
+            signer = Signature.getInstance(MessageDigest.ALG_NULL, Signature.SIG_CIPHER_ECDSA, Cipher.PAD_NULL, false);
+        }
+        return super.sign(inBuffer, inOffset, inLength, outBuffer, outOffset);
     }
 
     public short marshalPublic(byte[] scratch, short offset) {
@@ -258,17 +285,17 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
 
     @Override
     public void generate() {
-        if(privateKey != null){
+        if (privateKey != null) {
             privateKey.clearKey();
             privateKey = null;
         }
 
-        if (publicKey != null){
+        if (publicKey != null) {
             publicKey.clearKey();
             publicKey = null;
         }
 
-        if(JCSystem.isObjectDeletionSupported()){
+        if (JCSystem.isObjectDeletionSupported()) {
             JCSystem.requestObjectDeletion();
         }
         allocate();

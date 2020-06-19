@@ -28,6 +28,7 @@ package com.makina.security.OpenFIPS201;
 
 import javacard.framework.*;
 
+
 /**
  * Implements FIPS201-2 according to NIST SP800-73-4.
  *
@@ -952,6 +953,7 @@ public final class PIV {
         final byte CONST_TAG_WITNESS 	            = (byte)0x80;
         final byte CONST_TAG_CHALLENGE 	            = (byte)0x81;
         final byte CONST_TAG_CHALLENGE_RESPONSE 	= (byte)0x82;
+        final byte CONST_TAG_EXPONENTIATION         = (byte)0x85;
 
         //
         // COMMAND CHAIN HANDLING
@@ -1013,8 +1015,8 @@ public final class PIV {
         //
         // STEP 1 - Traverse the TLV to determine what combination of elements exist
         //
-        short challengeOffset = 0, witnessOffset = 0, responseOffset = 0, challengeLength = 0;
-        boolean challengeEmpty = false, witnessEmpty = false, responseEmpty = false;
+        short challengeOffset = 0, witnessOffset = 0, responseOffset = 0, exponentiationOffset = 0;
+        boolean challengeEmpty = false, witnessEmpty = false, responseEmpty = false, exponentiationEmpty = false;
 
         // Save the offset in the TLV object
         offset = tlvReader.getOffset();
@@ -1030,6 +1032,9 @@ public final class PIV {
             } else if (tlvReader.match(CONST_TAG_WITNESS)) {
                 witnessOffset = tlvReader.getOffset();
                 witnessEmpty = tlvReader.isNull();
+            } else if (tlvReader.match(CONST_TAG_EXPONENTIATION)) {
+                exponentiationOffset = tlvReader.getOffset();
+                exponentiationEmpty = tlvReader.isNull();
             } else {
                 // We have come across an unknown tag value
                 // TODO: We'll do nothing now until we know whether there are no edge cases where this is possible
@@ -1337,6 +1342,52 @@ public final class PIV {
 
             // Clear our authentication state
             authenticateReset();
+
+            // Set up the outgoing command chain
+            chainBuffer.setOutgoing(scratch, (short)0, length, true);
+
+            // < PIV Card Application indicates successful authentication and sends back the encrypted challenge.
+            return length;
+        }
+
+
+        //
+        // CASE 6 - EXPONENTIATION AUTHENTICATE RESPONSE
+        //
+
+        // > Client application returns the ECDH derived shared secret
+        else if (exponentiationOffset != 0 && !exponentiationEmpty) {
+            // Reset any other authentication intermediate state
+            authenticateReset();
+            // Validate that the key has the correct role for this operation
+            if (!key.hasRole(PIVKeyObject.ROLE_AUTH_INTERNAL)) {
+                ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+            }
+
+            if(!(key instanceof PIVKeyObjectECC )){
+                ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
+            }
+
+            // Verify that the EXPONENTIATION tag length is the same as a ECC public key
+            tlvReader.setOffset(exponentiationOffset);
+            length = tlvReader.getLength();
+
+            // Compute the shared secret
+            length = ((PIVKeyObjectECC)key).doEcdh(scratch, tlvReader.getDataOffset(), length, buffer, (short)0);
+
+            // Write out the response TLV, passing through the block length as an indicative maximum
+            tlvWriter.init(scratch, (short)0, length, CONST_TAG_TEMPLATE);
+
+            // Create the RESPONSE tag
+            tlvWriter.writeTag(CONST_TAG_CHALLENGE_RESPONSE);
+            tlvWriter.writeLength(length);
+
+            // Write the response shared secret
+            offset = Util.arrayCopyNonAtomic(buffer, (short)0, scratch, tlvWriter.getOffset(), length);
+            tlvWriter.setOffset(offset); // Update the TLV offset value
+
+            // Finalise the TLV object and get the entire data object length
+            length = tlvWriter.finish();
 
             // Set up the outgoing command chain
             chainBuffer.setOutgoing(scratch, (short)0, length, true);

@@ -27,16 +27,15 @@
 package com.makina.security.OpenFIPS201;
 
 import javacard.framework.JCSystem;
-import javacard.security.KeyPair;
-import javacard.security.PrivateKey;
-import javacard.security.PublicKey;
-import javacard.security.Signature;
+import javacard.security.*;
 
 public abstract class PIVKeyObjectPKI extends PIVKeyObject {
 	
 	protected PrivateKey privateKey;
 	protected PublicKey publicKey;
 	protected Signature signer;
+	protected KeyAgreement keyAgreement;
+
 
 	// Clear any key material from this object
 	public static final byte ELEMENT_CLEAR = (byte)0xFF;
