@@ -27,7 +27,6 @@ SOFTWARE.
 package com.makina.security.OpenFIPS201;
 
 import javacard.framework.JCSystem;
-import javacard.security.KeyBuilder;
 import javacardx.crypto.Cipher;
 import javacard.framework.*;
 
@@ -135,7 +134,7 @@ public abstract class PIVKeyObject extends PIVObject {
     }
 
     public final boolean getSecurityStatus() {
-        return (securityFlags[FLAGS_AUTHENTICATED] == true);
+        return (securityFlags[FLAGS_AUTHENTICATED]);
     }
 
     public abstract short decrypt(Cipher cipher, byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);

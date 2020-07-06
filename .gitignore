@@ -90,10 +90,8 @@ Temporary Items
 .apdisk
 
 # JavaCardIDE Files
-.classpath
 .javacard
 .libraryCache
-.project
 .settings/*
 bin/*
 
@@ -101,3 +99,7 @@ bin/*
 .idea
 *.iml
 .metadata
+
+.jcop
+
+vendor_libs/*

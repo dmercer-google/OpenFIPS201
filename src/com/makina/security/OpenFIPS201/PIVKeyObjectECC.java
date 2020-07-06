@@ -33,13 +33,12 @@ import javacard.security.*;
 import javacardx.crypto.Cipher;
 
 /**
- * Provides functionality for asymmetric PIV key objects
+ * Provides functionality for ECC PIV key objects
  */
 public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
-
-    public PIVKeyObjectECC(byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
-        super(id, modeContact, modeContactless, mechanism, role);
-    }
+    private static Signature signer;
+    private static Signature sha1Signer;
+    private static Signature sha256Signer;
 
     public final byte ELEMENT_ECC_POINT = (byte) 0x86;
     public final byte ELEMENT_ECC_SECRET = (byte) 0x87;
@@ -52,6 +51,9 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     public static final short CONST_MARSHALLED_PUB_KEY_LEN_P256 = (short) ((KeyBuilder.LENGTH_EC_FP_256 / 8) * 2 + 1);
     public static final short CONST_MARSHALLED_PUB_KEY_LEN_P384 = (short) ((KeyBuilder.LENGTH_EC_FP_384 / 8) * 2 + 1);
 
+    public PIVKeyObjectECC(byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
+        super(id, modeContact, modeContactless, mechanism, role);
+    }
 
     @Override
     public void updateElement(byte element, byte[] buffer, short offset, short length) {
@@ -198,7 +200,12 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
         ((ECPublicKey) publicKey).setFieldFP(p, (short) 0, (short) (p.length));
         ((ECPublicKey) publicKey).setK(params.getH());
 
-        ((ECPrivateKey) privateKey).copyDomainParametersFrom((ECKey) publicKey);
+        ((ECPrivateKey) privateKey).setA(a, (short) 0, (short) (a.length));
+        ((ECPrivateKey) privateKey).setB(b, (short) 0, (short) (b.length));
+        ((ECPrivateKey) privateKey).setG(g, (short) 0, (short) (g.length));
+        ((ECPrivateKey) privateKey).setR(r, (short) 0, (short) (r.length));
+        ((ECPrivateKey) privateKey).setFieldFP(p, (short) 0, (short) (p.length));
+        ((ECPrivateKey) privateKey).setK(params.getH());
     }
 
     public short doEcdh(byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
@@ -226,10 +233,24 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
 
     @Override
     public short sign(byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
-        if (signer == null) {
-            signer = Signature.getInstance(MessageDigest.ALG_NULL, Signature.SIG_CIPHER_ECDSA, Cipher.PAD_NULL, false);
+        switch (inLength) {
+            case MessageDigest.LENGTH_SHA:
+                if (sha1Signer == null) {
+                    sha1Signer = Signature.getInstance(Signature.ALG_ECDSA_SHA, false);
+                }
+                signer = sha1Signer;
+                break;
+            case MessageDigest.LENGTH_SHA_256:
+                if (sha256Signer == null) {
+                    sha256Signer = Signature.getInstance(Signature.ALG_ECDSA_SHA_256, false);
+                }
+                signer = sha256Signer;
+                break;
+            default:
+                ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
         }
-        return super.sign(inBuffer, inOffset, inLength, outBuffer, outOffset);
+        signer.init(privateKey, Signature.MODE_SIGN);
+        return signer.signPreComputedHash(inBuffer, inOffset, inLength, outBuffer, outOffset);
     }
 
     public short marshalPublic(byte[] scratch, short offset) {

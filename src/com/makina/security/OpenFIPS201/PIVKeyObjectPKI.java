@@ -33,9 +33,7 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
 	
 	protected PrivateKey privateKey;
 	protected PublicKey publicKey;
-	protected Signature signer;
 	protected KeyAgreement keyAgreement;
-
 
 	// Clear any key material from this object
 	public static final byte ELEMENT_CLEAR = (byte)0xFF;
@@ -77,11 +75,7 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
 		new KeyPair(publicKey, privateKey).genKeyPair();
 	}
 
-	public short sign(byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
-		signer.init(privateKey, Signature.MODE_SIGN);
-		return signer.sign(inBuffer, inOffset, inLength, outBuffer, outOffset);
-	}
-
+	public abstract short sign(byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);
 	protected abstract void allocate();
 	public abstract short marshalPublic(byte[] scratch, short offset);
 }
