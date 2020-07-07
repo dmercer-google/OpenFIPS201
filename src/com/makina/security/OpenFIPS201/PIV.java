@@ -108,16 +108,16 @@ public final class PIV {
   private final PIVSecurityProvider cspPIV;
   // A RAM working area to hold intermediate data and outgoing buffers
   private final byte[] scratch;
-  // Holds any authentication related intermediery state
+  // Holds any authentication related intermediary state
   private final byte[] authenticationContext;
   // TLV management objects
-  TLVReader tlvReader;
-  TLVWriter tlvWriter;
+  final TLVReader tlvReader;
+  final TLVWriter tlvWriter;
   // Data Store
   private PIVDataObject firstDataObject;
 
   /**
-   * Constuctor
+   * Constructor
    *
    * @param chainBuffer A reference to the shared chainBuffer for multi-frame APDU support
    */
@@ -231,10 +231,9 @@ public final class PIV {
    *
    * @param buffer The incoming APDU buffer
    * @param offset The starting offset of the CDATA section
-   * @param length The length of the CDATA section
    * @return The length of the entire data object
    */
-  public short getData(byte[] buffer, short offset, short length) {
+  public short getData(byte[] buffer, short offset) {
 
     final byte CONST_TAG = (byte) 0x5C;
 
@@ -340,7 +339,7 @@ public final class PIV {
     //
 
     // STEP 1 - Set up the outgoing chainbuffer
-    length = data.getLength();
+    short length = data.getLength();
     chainBuffer.setOutgoing(data.content, (short) 0, length, false);
 
     // Done - return how many bytes we will process
@@ -866,8 +865,7 @@ public final class PIV {
 
     // PRE-CONDITION 3 - Check the PUK blocked status
     // If the current value of the PUK's retry counter is zero, then the PIN's retry counter shall
-    // not be
-    // reset and the PIV Card Application shall return the status word '69 83'.
+    // not be reset and the PIV Card Application shall return the status word '69 83'.
     if (cspPIV.cardPUK.getTriesRemaining() == (short) 0) ISOException.throwIt(SW_OPERATION_BLOCKED);
 
     // PRE-CONDITION 3 - Check the format of the NEW pin value
@@ -911,11 +909,9 @@ public final class PIV {
     // counter associated with the PIN shall not be reset, the security status of the PIN's key
     // reference shall
     // remain unchanged, and the PUK's retry counter shall remain unchanged.11 If the PIV Card
-    // Application
-    // returns status word '63 CX', then the retry counter associated with the PIN shall not be
-    // reset, the security
-    // status of the PIN's key reference shall be set to FALSE, and the PUK's retry counter shall be
-    // decremented by one.
+    // Application returns status word '63 CX', then the retry counter associated with the PIN shall not be
+    // reset, the security status of the PIN's key reference shall be set to FALSE, and the PUK's retry \
+    // counter shall be decremented by one.
 
     // NOTES:
     // - We implicitly decrement the PUK counter if the PUK is incorrect (63CX)
@@ -926,12 +922,10 @@ public final class PIV {
     // If the card command succeeds, then the PIN's retry counter shall be set to its reset retry
     // value. Optionally,
     // the PUK's retry counter may be set to its initial reset retry value. The security status of
-    // the PIN's key
-    // reference shall not be changed.
+    // the PIN's key reference shall not be changed.
 
     // NOTE: Since the PUK was verified, the OwnerPIN object automatically resets the PUK counter,
-    // which governs
-    // 		 the above behaviour
+    // which governs the above behaviour
 
     // Update, reset and unblock the PIN
     cspPIV.cardPIN.update(buffer, (short) (offset + Config.PIN_LENGTH_MAX), Config.PIN_LENGTH_MAX);
@@ -1476,10 +1470,9 @@ public final class PIV {
    *
    * @param buffer The incoming APDU buffer
    * @param offset The offset of the CDATA element
-   * @param length The length of the CDATA element
    * @return The length of the return data
    */
-  public short generateAsymmetricKeyPair(byte[] buffer, short offset, short length) {
+  public short generateAsymmetricKeyPair(byte[] buffer, short offset) {
 
     // Request Elements
     final byte CONST_TAG_TEMPLATE = (byte) 0xAC;
@@ -1521,7 +1514,7 @@ public final class PIV {
     PIVKeyObject key = cspPIV.selectKey(buffer[ISO7816.OFFSET_P2], buffer[offset]);
     if (key == null) {
       // NOTE: The error message we return here is different dependant on whether the key is bad
-      // (6A86), or the mechanism is bad (6A80) (See SP800-73-4 3.3.2 Generate Asymmetric Keypair).
+      // (6A86), or the mechanism is bad (6A80) (See SP800-73-4 3.3.2 Generate Asymmetric Key pair).
       if (!cspPIV.keyExists(buffer[ISO7816.OFFSET_P2])) {
         // The key reference is bad
         ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
@@ -1545,7 +1538,7 @@ public final class PIV {
     keyPair.generate();
 
     // STEP 2 - Prepare the outgoing public key
-    length = keyPair.marshalPublic(scratch, (short) 0);
+    short length = keyPair.marshalPublic(scratch, (short) 0);
     chainBuffer.setOutgoing(scratch, (short) 0, length, true);
 
     // Done, return the length of the object we are writing back
@@ -1616,7 +1609,6 @@ public final class PIV {
       if (padding && buffer[offset] != CONST_PAD) return false;
       if (buffer[offset] == CONST_PAD) {
         if (i < Config.PIN_LENGTH_MIN) return false; // Make sure our PIN bytes are minimum length
-        padding = true; // Set padding flag
       }
       offset++;
     }

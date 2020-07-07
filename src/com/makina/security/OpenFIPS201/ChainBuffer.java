@@ -72,9 +72,8 @@ public final class ChainBuffer {
 
   // The APDU header used for tracking incoming data
   // NOTE: It's cheaper to use 4 shorts in this array than to allocate a separate 4 bytes, as the
-  // minimum
-  // allocation size is 32 bytes anyway
-  private static final short CONTEXT_APDU_CLAINS = (short) 8;
+  // minimum allocation size is 32 bytes anyway
+  private static final short CONTEXT_APDU_CLASS = (short) 8;
   private static final short CONTEXT_APDU_P1P2 = (short) 9;
 
   // Total length of the context transient object
@@ -138,7 +137,7 @@ public final class ChainBuffer {
     context[CONTEXT_REMAINING] = (short) 0;
     context[CONTEXT_LENGTH] = (short) 0;
     context[CONTEXT_CLEAR_ON_COMPLETE] = (short) 0;
-    context[CONTEXT_APDU_CLAINS] = (short) 0;
+    context[CONTEXT_APDU_CLASS] = (short) 0;
     context[CONTEXT_APDU_P1P2] = (short) 0;
     context[CONTEXT_TRANSACTION] = (short) 0;
   }
@@ -209,7 +208,7 @@ public final class ChainBuffer {
     if (context[CONTEXT_STATE] != STATE_INCOMING_APDU) return;
 
     // If the command has changed, cancel the previous incoming APDU and continue.
-    if ((context[CONTEXT_APDU_CLAINS] & CLA_MASK) != Util.getShort(apdu, ISO7816.OFFSET_CLA)
+    if ((context[CONTEXT_APDU_CLASS] & CLA_MASK) != Util.getShort(apdu, ISO7816.OFFSET_CLA)
         || context[CONTEXT_APDU_P1P2] != Util.getShort(apdu, ISO7816.OFFSET_P1)) {
       // Cancel the previous incoming APDU
       reset();
@@ -280,7 +279,7 @@ public final class ChainBuffer {
       // Set up the internal state
       context[CONTEXT_STATE] = STATE_INCOMING_APDU;
       context[CONTEXT_INITIAL] = inOffset;
-      context[CONTEXT_APDU_CLAINS] = Util.getShort(apdu, ISO7816.OFFSET_CLA);
+      context[CONTEXT_APDU_CLASS] = Util.getShort(apdu, ISO7816.OFFSET_CLA);
       context[CONTEXT_APDU_P1P2] = Util.getShort(apdu, ISO7816.OFFSET_P1);
 
       // Write the first section of data
@@ -306,7 +305,7 @@ public final class ChainBuffer {
         && context[CONTEXT_STATE] == STATE_INCOMING_APDU) {
 
       // Validate that we are chaining for the correct command
-      if (context[CONTEXT_APDU_CLAINS] != Util.getShort(apdu, ISO7816.OFFSET_CLA)
+      if (context[CONTEXT_APDU_CLASS] != Util.getShort(apdu, ISO7816.OFFSET_CLA)
           || context[CONTEXT_APDU_P1P2] != Util.getShort(apdu, ISO7816.OFFSET_P1)) {
         reset();
 
@@ -346,7 +345,7 @@ public final class ChainBuffer {
       // Validate that we are chaining for the correct command
       // NOTE: We have to mask off the chaining bit before comparing
       final short CLA_MASK = ~(short) 0x1000;
-      if ((context[CONTEXT_APDU_CLAINS] & CLA_MASK) != Util.getShort(apdu, ISO7816.OFFSET_CLA)
+      if ((context[CONTEXT_APDU_CLASS] & CLA_MASK) != Util.getShort(apdu, ISO7816.OFFSET_CLA)
           || context[CONTEXT_APDU_P1P2] != Util.getShort(apdu, ISO7816.OFFSET_P1)) {
         reset();
 
@@ -407,12 +406,12 @@ public final class ChainBuffer {
 
     // If we have not written anything, this must be the first command so set the APDU header
     if (context[CONTEXT_LENGTH] == context[CONTEXT_REMAINING]) {
-      context[CONTEXT_APDU_CLAINS] = (short) (Util.getShort(buffer, ISO7816.OFFSET_CLA) & CLA_MASK);
+      context[CONTEXT_APDU_CLASS] = (short) (Util.getShort(buffer, ISO7816.OFFSET_CLA) & CLA_MASK);
       context[CONTEXT_APDU_P1P2] = Util.getShort(buffer, ISO7816.OFFSET_P1);
     }
 
     // Validate that we are chaining for the correct command
-    else if (context[CONTEXT_APDU_CLAINS]
+    else if (context[CONTEXT_APDU_CLASS]
             != (short) ((Util.getShort(buffer, ISO7816.OFFSET_CLA) & CLA_MASK))
         || context[CONTEXT_APDU_P1P2] != Util.getShort(buffer, ISO7816.OFFSET_P1)) {
 
@@ -455,9 +454,6 @@ public final class ChainBuffer {
       }
       context[CONTEXT_OFFSET] += length;
       context[CONTEXT_REMAINING] -= length;
-
-      // Cause the APDU to complete here
-      ISOException.throwIt(ISO7816.SW_NO_ERROR);
     } else {
 
       //
@@ -482,10 +478,8 @@ public final class ChainBuffer {
 
       // Clear our context as the chain is now complete
       resetCommit();
-
-      // Cause the APDU to complete here
-      ISOException.throwIt(ISO7816.SW_NO_ERROR);
     }
+    ISOException.throwIt(ISO7816.SW_NO_ERROR);
   }
 
   /**

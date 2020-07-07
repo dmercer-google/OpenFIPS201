@@ -35,7 +35,7 @@ import org.globalplatform.GPSystem;
 /** Provides an OwnerPIN proxy to the CVM class to allow uniform handling */
 public final class CVMPIN extends OwnerPIN implements PIN {
 
-  CVM cvm;
+  final CVM cvm;
 
   /**
    * Constructor

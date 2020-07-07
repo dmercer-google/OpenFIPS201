@@ -248,7 +248,7 @@ public final class OpenFIPS201 extends Applet {
   /**
    * Processes the GlobalPlatform Secure Channel Protocol (SCP) authentication mechanisms
    *
-   * @param
+   * @param apdu The APDU to process.
    */
   private void processGP_SECURECHANNEL(APDU apdu) {
 
@@ -330,7 +330,7 @@ public final class OpenFIPS201 extends Applet {
      */
 
     // STEP 1 - Call the PIV 'GET DATA' command
-    piv.getData(buffer, ISO7816.OFFSET_CDATA, length);
+    piv.getData(buffer, ISO7816.OFFSET_CDATA);
 
     // NOTE: If no exception occurred during processing, the ChainBuffer now contains a reference
     //		 to a data object to write to the client.
@@ -602,7 +602,7 @@ public final class OpenFIPS201 extends Applet {
      */
 
     // STEP 1 - Call the PIV GENERATE ASSYMETRIC KEY command
-    piv.generateAsymmetricKeyPair(buffer, ISO7816.OFFSET_CDATA, length);
+    piv.generateAsymmetricKeyPair(buffer, ISO7816.OFFSET_CDATA);
 
     // STEP 2 - Process the first frame of the chainBuffer for this response
     chainBuffer.processOutgoing(apdu);

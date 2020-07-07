@@ -30,7 +30,7 @@ package com.makina.security.OpenFIPS201;
  * ECC Domain Parameters
  */
 abstract class ECParams {
-  // Cofactor
+  // cofactor
   protected static final short h = 0x01;
 
   /*

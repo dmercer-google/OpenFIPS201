@@ -41,7 +41,7 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
   public static final byte ELEMENT_RSA_E = (byte) 0x82;
   // RSA Private Exponent
   public static final byte ELEMENT_RSA_D = (byte) 0x83;
-  // Raw RSA signing is done using encryption so we use a Sipher versus a Signature
+  // Raw RSA signing is done using encryption so we use a Cipher versus a Signature
   private static Cipher signer;
 
   // The list of elements that can be updated for an asymmetric key

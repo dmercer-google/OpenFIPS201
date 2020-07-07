@@ -44,7 +44,7 @@ public final class PIVSecurityProvider {
   private static final short FLAG_CONTACTLESS = (short) 0;
   // If non-zero, a valid GP Secure Channel authentication with CENC+CMAC is established
   private static final short FLAG_SECURE_CHANNEL = (short) 1;
-  // If non-zero, a PIN verification occured prior to the last GENERAL AUTHENTICATE command
+  // If non-zero, a PIN verification occurred prior to the last GENERAL AUTHENTICATE command
   private static final short FLAG_PIN_ALWAYS = (short) 2;
   private static final short LENGTH_FLAGS = (short) 3;
   // PIN objects
@@ -63,7 +63,7 @@ public final class PIVSecurityProvider {
 
   public PIVSecurityProvider() {
 
-    // Create our CSP's
+    // Create our CSPs
     cspAES = Cipher.getInstance(Cipher.ALG_AES_BLOCK_128_ECB_NOPAD, false);
     cspRSA = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
     cspTDEA = Cipher.getInstance(Cipher.ALG_DES_ECB_NOPAD, false);

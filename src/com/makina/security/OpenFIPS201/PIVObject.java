@@ -54,7 +54,7 @@ public abstract class PIVObject {
   protected static final short LENGTH_HEADER = (short) 8;
   // Linked list element
   public PIVObject nextObject;
-  protected byte[] header;
+  protected final byte[] header;
 
   protected PIVObject(byte id, byte modeContact, byte modeContactless) {
 

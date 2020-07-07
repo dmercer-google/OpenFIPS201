@@ -109,7 +109,7 @@ public abstract class Config {
   /// If set to true, authentication to GlobalPlatform will fail on the contactless
   /// interface.
   /// NOTE: This does not restrict the usage of keys with the ROLE_ADMIN role set (i.e. 9B),
-  ///		 which must be configured individually during pre-perso.
+  ///		 which must be configured individually during pre-personalization.
   /// SP800-73-4 Requirement: Must be set to true
   public static final boolean FEATURE_RESTRICT_SCP_TO_CONTACT = true;
 

@@ -78,7 +78,7 @@ public final class TLVReader {
   //
   // CONSTANTS
   //
-  public Object[] dataPtr;
+  public final Object[] dataPtr;
 
   //
   // TODO: Cache Tag, Length and ValueOffset values when find() completes, so that
@@ -87,7 +87,7 @@ public final class TLVReader {
   // private static final short CONTEXT_T					= (short)4;
   // private static final short CONTEXT_L					= (short)5;
   // private static final short CONTEXT_V					= (short)6;
-  public short[] context;
+  public final short[] context;
 
   public TLVReader() {
     dataPtr = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
@@ -406,7 +406,7 @@ public final class TLVReader {
   /**
    * Reads the current tag value as a short integer value
    *
-   * @return The current tagvalue as a short integer
+   * @return The current tag value as a short integer
    */
   public short toShort() {
     byte[] data = (byte[]) dataPtr[0];

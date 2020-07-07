@@ -59,8 +59,8 @@ public final class TLVWriter {
   //
   // CONSTANTS
   //
-  public Object[] dataPtr;
-  public short[] context;
+  public final Object[] dataPtr;
+  public final short[] context;
 
   public TLVWriter() {
     dataPtr = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
