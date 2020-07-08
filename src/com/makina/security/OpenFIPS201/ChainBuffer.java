@@ -522,11 +522,9 @@ public final class ChainBuffer {
     //
     // !! HACK !!
     // Most applets completely ignore this value and so interface developers have gotten lazy about
-    // whether
-    // or not they include an LE byte when they expect response data.
+    // whether or not they include an LE byte when they expect response data.
     // This treats the absence of an LE byte (case 3) as if it were a case 4 byte with LE == '00',
-    // which maps
-    // to 256 bytes.
+    // which maps to 256 bytes.
     //
     if (le == 0) le = 256;
 

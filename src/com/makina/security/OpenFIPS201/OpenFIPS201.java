@@ -182,10 +182,8 @@ public final class OpenFIPS201 extends Applet {
     // - If there is an outstanding chain request to process, this method will throw an ISOException
     //	 (including SW_NO_ERROR) and no further processing will occur.
     // - It is important that this command is handled before any GP SCP authentication is called to
-    // prevent a
-    //	 downgrade attack where the attacker waits for a sensitive large-command to be executed and
-    // then
-    //	 intercepts the session and cancels the secure channel (thus removing session encryption).
+    //   prevent a downgrade attack where the attacker waits for a sensitive large-command to be executed
+    //   and then intercepts the session and cancels the secure channel (thus removing session encryption).
 
     // We pass the byte array, offset and length here because the previous call to unwrap() may have
     // altered the length

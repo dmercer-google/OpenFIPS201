@@ -71,8 +71,7 @@ public final class PIVDataObject extends PIVObject {
 
       // Wipe our reference to the data, let the GC collect and re-allocate
       // NOTE: requestObjectDeletion doesn't necessarily do it straight away, so both objects may
-      // remain
-      //		 allocated until the next call to process()
+      // remain allocated until the next call to process()
       content = null;
       JCSystem.requestObjectDeletion();
       content = new byte[length];

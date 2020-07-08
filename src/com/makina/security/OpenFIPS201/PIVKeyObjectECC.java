@@ -59,7 +59,6 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     byte mechanism = getMechanism();
 
     switch (element) {
-
         // ECC Public Key
       case ELEMENT_ECC_POINT:
         switch (mechanism) {
