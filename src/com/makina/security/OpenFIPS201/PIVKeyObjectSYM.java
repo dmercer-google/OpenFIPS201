@@ -159,12 +159,10 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
     return cipher.doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
-  @Override
   public boolean isAsymmetric() {
     return false;
   }
 
-  @Override
   public short getBlockLength() {
     switch (getMechanism()) {
       case PIV.ID_ALG_DEFAULT:
@@ -182,7 +180,6 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
     }
   }
 
-  @Override
   public short getKeyLength() {
     switch (getMechanism()) {
       case PIV.ID_ALG_DEFAULT:

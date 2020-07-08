@@ -46,12 +46,10 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
     super(id, modeContact, modeContactless, mechanism, role);
   }
 
-  @Override
   public boolean isAsymmetric() {
     return true;
   }
 
-  @Override
   public void clear() {
     if (privateKey != null) {
       privateKey.clearKey();
@@ -66,7 +64,6 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
     }
   }
 
-  @Override
   public boolean isInitialised() {
     return (privateKey != null
         && privateKey.isInitialized()

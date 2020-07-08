@@ -54,8 +54,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     super(id, modeContact, modeContactless, mechanism, role);
   }
 
-  @Override
-  public void updateElement(byte element, byte[] buffer, short offset, short length) {
+    public void updateElement(byte element, byte[] buffer, short offset, short length) {
     byte mechanism = getMechanism();
 
     switch (element) {
@@ -133,8 +132,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     }
   }
 
-  @Override
-  protected void allocate() {
+    protected void allocate() {
     short keyLength = (short) 0;
     switch (header[HEADER_MECHANISM]) {
       case PIV.ID_ALG_ECC_P256:
@@ -158,8 +156,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     setParams();
   }
 
-  @Override
-  public short encrypt(
+    public short encrypt(
       Cipher cipher,
       byte[] inBuffer,
       short inOffset,
@@ -170,8 +167,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     return 0;
   }
 
-  @Override
-  public short decrypt(
+    public short decrypt(
       Cipher cipher,
       byte[] inBuffer,
       short inOffset,
@@ -236,33 +232,40 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
         ISOException.throwIt(ISO7816.SW_WRONG_DATA);
     }
 
+    // NOTE:  The assumption with the following code is that this method will only be called
+    // once per power/reset cycle of the card.  If that is not your use case move the call
+    // to init outside of the if block.
     if (keyAgreement == null) {
       keyAgreement = KeyAgreement.getInstance(KeyAgreement.ALG_EC_SVDP_DH_PLAIN, false);
+      keyAgreement.init(privateKey);
     }
-    keyAgreement.init(privateKey);
     return keyAgreement.generateSecret(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
-  @Override
   public short sign(
       byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
+
+    // NOTE: The assumption with the following code is that this method will only be called
+    // once per power/reset cycle of the card.  If that is not your use case move the calls
+    // to init outside of their respective if blocks.
     switch (inLength) {
       case MessageDigest.LENGTH_SHA:
         if (sha1Signer == null) {
           sha1Signer = Signature.getInstance(Signature.ALG_ECDSA_SHA, false);
+          sha1Signer.init(privateKey, Signature.MODE_SIGN);
         }
         signer = sha1Signer;
         break;
       case MessageDigest.LENGTH_SHA_256:
         if (sha256Signer == null) {
           sha256Signer = Signature.getInstance(Signature.ALG_ECDSA_SHA_256, false);
+          sha256Signer.init(privateKey, Signature.MODE_SIGN);
         }
         signer = sha256Signer;
         break;
       default:
         ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
     }
-    signer.init(privateKey, Signature.MODE_SIGN);
     return signer.signPreComputedHash(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
@@ -297,8 +300,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
    *
    * @throws ISOException reason = SW_FUNC_NOT_SUPPORTED
    */
-  @Override
-  public short getBlockLength() {
+    public short getBlockLength() {
     ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
     return 0;
   }
@@ -317,8 +319,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     }
   }
 
-  @Override
-  public void generate() {
+    public void generate() {
     if (privateKey != null) {
       privateKey.clearKey();
       privateKey = null;

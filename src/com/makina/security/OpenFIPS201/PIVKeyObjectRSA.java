@@ -54,7 +54,6 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
     super(id, modeContact, modeContactless, mechanism, role);
   }
 
-  @Override
   public void updateElement(byte element, byte[] buffer, short offset, short length) {
 
     switch (element) {
@@ -151,7 +150,6 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
     return ((RSAPublicKey) publicKey).getModulus(buffer, offset);
   }
 
-  @Override
   protected void allocate() {
     short keyLength = 0;
     // Generate the appropriate key(s)
@@ -173,7 +171,6 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
     publicKey = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, keyLength, false);
   }
 
-  @Override
   public short sign(
       byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
     if (inLength != getBlockLength()) {
@@ -186,7 +183,6 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
     return signer.doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
-  @Override
   public short marshalPublic(byte[] scratch, short offset) {
     TLVWriter tlvWriter = new TLVWriter();
     // Adding 12 to the key length to account for other overhead
@@ -211,7 +207,6 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
     return tlvWriter.finish();
   }
 
-  @Override
   public short encrypt(
       Cipher cipher,
       byte[] inBuffer,
@@ -227,7 +222,6 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
     return cipher.doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
-  @Override
   public short decrypt(
       Cipher cipher,
       byte[] inBuffer,
@@ -239,13 +233,11 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
     return cipher.doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
-  @Override
   public short getBlockLength() {
     // RSA blocks are the same length as their keys
     return getKeyLength();
   }
 
-  @Override
   public short getKeyLength() {
     switch (getMechanism()) {
       case PIV.ID_ALG_RSA_1024:
