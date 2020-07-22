@@ -151,7 +151,7 @@ public final class PIV {
     if (Config.FEATURE_PIN_INIT_RANDOM) {
       cspPIV.generateRandom(scratch, (short) 0, Config.PIN_LENGTH_MAX);
       cspPIV.cardPIN.update(scratch, (short) 0, Config.PIN_LENGTH_MAX);
-      cspPIV.zeroise(scratch, (short) 0, Config.PIN_LENGTH_MAX);
+      PIVSecurityProvider.zeroise(scratch, (short) 0, Config.PIN_LENGTH_MAX);
     } else {
       cspPIV.cardPIN.update(Config.DEFAULT_PIN, (short) 0, (byte) Config.DEFAULT_PIN.length);
     }
@@ -161,7 +161,7 @@ public final class PIV {
       // Generate a random value
       cspPIV.generateRandom(scratch, (short) 0, Config.PIN_LENGTH_MAX);
       cspPIV.cardPUK.update(scratch, (short) 0, Config.PIN_LENGTH_MAX);
-      cspPIV.zeroise(scratch, (short) 0, Config.PIN_LENGTH_MAX);
+      PIVSecurityProvider.zeroise(scratch, (short) 0, Config.PIN_LENGTH_MAX);
     } else {
       // Use the default from our configuration file
       cspPIV.cardPUK.update(Config.DEFAULT_PUK, (short) 0, (byte) Config.DEFAULT_PUK.length);
@@ -958,26 +958,26 @@ public final class PIV {
       // If any key reference value is specified that is not supported by the card, the PIV Card
       // Application shall return the status word '6A 88'.
       cspPIV.setPINAlways(false); // Clear the PIN ALWAYS flag
-      cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+      PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
       ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
     }
 
     // PRE-CONDITION 2 - The access rules must be satisfied for the requested key
     // NOTE: A call to this method automatically clears the PIN ALWAYS status.
     if (!cspPIV.checkAccessModeObject(key)) {
-      cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+      PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
       ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
     }
 
     // PRE-CONDITION 3 - The key's value must have been set
     if (!key.isInitialised()) {
-      cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+      PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
       ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
     }
 
     // PRE-CONDITION 4 - The Dynamic Authentication Template tag must be present in the data
     if (!tlvReader.find(CONST_TAG_TEMPLATE)) {
-      cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+      PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
       ISOException.throwIt(ISO7816.SW_DATA_INVALID);
     }
 
@@ -1052,7 +1052,7 @@ public final class PIV {
       authenticateReset();
       // Validate that the key has the correct role for this operation
       if (!key.hasRole(PIVKeyObject.ROLE_AUTH_INTERNAL)) {
-        cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+        PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
         ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
       }
 
@@ -1075,7 +1075,7 @@ public final class PIV {
                   (short) 0);
         }
       } finally {
-        cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+        PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
       }
 
       // Write out the response TLV, passing through the block length as an indicative maximum
@@ -1116,7 +1116,7 @@ public final class PIV {
       // Validate that the key has the correct role for this operation
       if (!key.hasRole(PIVKeyObject.ROLE_AUTH_EXTERNAL)) {
         authenticateReset();
-        cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+        PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
         ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
       }
 
@@ -1163,7 +1163,7 @@ public final class PIV {
       if (authenticationContext[OFFSET_AUTH_STATE] != AUTH_STATE_EXTERNAL) {
         // Invalid state for this command
         authenticateReset();
-        cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+        PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
         ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
       }
 
@@ -1172,7 +1172,7 @@ public final class PIV {
           || authenticationContext[OFFSET_AUTH_MECHANISM] != key.getMechanism()) {
         // Invalid state for this command
         authenticateReset();
-        cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+        PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
         ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
       }
 
@@ -1180,7 +1180,7 @@ public final class PIV {
       tlvReader.setOffset(responseOffset);
       if (length != tlvReader.getLength()) {
         authenticateReset();
-        cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+        PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
         ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
       }
 
@@ -1193,7 +1193,7 @@ public final class PIV {
               length)
           != 0) {
         authenticateReset();
-        cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+        PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
         ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
       }
 
@@ -1203,7 +1203,7 @@ public final class PIV {
       // Reset our authentication state
       authenticateReset();
 
-      cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+      PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
 
       // Done
       return (short) 0;
@@ -1224,7 +1224,7 @@ public final class PIV {
       // Validate that the key has the correct role for this operation
       if (!key.hasRole(PIVKeyObject.ROLE_AUTH_EXTERNAL)) {
         authenticateReset();
-        cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+        PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
         ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
       }
 
@@ -1277,7 +1277,7 @@ public final class PIV {
       if (authenticationContext[OFFSET_AUTH_STATE] != AUTH_STATE_MUTUAL) {
         // Invalid state for this command
         authenticateReset();
-        cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+        PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
         ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
       }
 
@@ -1286,7 +1286,7 @@ public final class PIV {
           || authenticationContext[OFFSET_AUTH_MECHANISM] != key.getMechanism()) {
         // Invalid state for this command
         authenticateReset();
-        cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+        PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
         ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
       }
 
@@ -1294,7 +1294,7 @@ public final class PIV {
       tlvReader.setOffset(witnessOffset);
       if (length != tlvReader.getLength()) {
         authenticateReset();
-        cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+        PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
         ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
       }
 
@@ -1307,7 +1307,7 @@ public final class PIV {
               length)
           != 0) {
         authenticateReset();
-        cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+        PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
         ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
       }
 
@@ -1320,7 +1320,7 @@ public final class PIV {
       length = tlvReader.getLength();
       if (key.getBlockLength() != length) {
         authenticateReset();
-        cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+        PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
         ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
       }
 
@@ -1408,7 +1408,7 @@ public final class PIV {
     //
     else {
       authenticateReset();
-      cspPIV.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
+      PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
       ISOException.throwIt(ISO7816.SW_WRONG_DATA);
       return (short) 0; // Keep the compiler happy
     }

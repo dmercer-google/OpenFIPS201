@@ -28,6 +28,7 @@ package com.makina.security.OpenFIPS201;
 
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
+import javacard.framework.JCSystem;
 import javacard.security.AESKey;
 import javacard.security.DESKey;
 import javacard.security.KeyBuilder;
@@ -55,8 +56,8 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
 
     switch (element) {
       case ELEMENT_KEY:
-        if (key == null) allocate();
-
+        clear();
+        allocate();
         switch (key.getType()) {
           case KeyBuilder.TYPE_DES:
             try {
@@ -78,6 +79,7 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
 
           default:
             // Error state
+            clear();
             ISOException.throwIt(ISO7816.SW_DATA_INVALID);
             break;
         }
@@ -92,11 +94,13 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
         ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         break;
     }
+    PIVSecurityProvider.zeroise(buffer, offset, getKeyLength());
   }
 
   @Override
   protected void allocate() {
 
+    clear();
     switch (header[HEADER_MECHANISM]) {
       case PIV.ID_ALG_DEFAULT:
       case PIV.ID_ALG_TDEA_3KEY:
@@ -130,6 +134,10 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
   public void clear() {
     if (key != null) {
       key.clearKey();
+      key = null;
+      if(JCSystem.isObjectDeletionSupported()){
+        JCSystem.requestObjectDeletion();
+      }
     }
   }
 

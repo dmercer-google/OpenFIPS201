@@ -382,7 +382,7 @@ public final class PIVSecurityProvider {
    * @param offset The starting offset of the buffer
    * @param length The length within the buffer to clear
    */
-  public void zeroise(byte[] buffer, short offset, short length) {
+  public static void zeroise(byte[] buffer, short offset, short length) {
 
     Util.arrayFillNonAtomic(buffer, offset, length, (byte) 0x00);
     Util.arrayFillNonAtomic(buffer, offset, length, (byte) 0xFF);
