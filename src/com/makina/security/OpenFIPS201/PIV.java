@@ -1379,7 +1379,7 @@ public final class PIV {
       // Compute the shared secret
       length =
           ((PIVKeyObjectECC) key)
-              .doEcdh(scratch, tlvReader.getDataOffset(), length, buffer, (short) 0);
+              .keyAgreement(scratch, tlvReader.getDataOffset(), length, buffer, (short) 0);
 
       // Write out the response TLV, passing through the block length as an indicative maximum
       tlvWriter.init(scratch, (short) 0, length, CONST_TAG_TEMPLATE);

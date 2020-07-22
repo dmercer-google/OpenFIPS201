@@ -30,7 +30,6 @@ import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 import javacard.security.*;
-import javacardx.crypto.Cipher;
 
 /** Provides functionality for ECC PIV key objects */
 public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
@@ -43,7 +42,6 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
       (short) ((KeyBuilder.LENGTH_EC_FP_384 / 8) * 2 + 1);
   // From SP 800-73-4 Part 2 3.3.2
   private static final byte CONST_POINT_UNCOMPRESSED = (byte) 0x04;
-  private static Signature signer;
   private static Signature sha1Signer;
   private static Signature sha256Signer;
   public final byte ELEMENT_ECC_POINT = (byte) 0x86;
@@ -54,7 +52,8 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     super(id, modeContact, modeContactless, mechanism, role);
   }
 
-    public void updateElement(byte element, byte[] buffer, short offset, short length) {
+  @Override
+  public void updateElement(byte element, byte[] buffer, short offset, short length) {
     byte mechanism = getMechanism();
 
     switch (element) {
@@ -132,7 +131,8 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     }
   }
 
-    protected void allocate() {
+  @Override
+  protected void allocate() {
     short keyLength = (short) 0;
     switch (header[HEADER_MECHANISM]) {
       case PIV.ID_ALG_ECC_P256:
@@ -156,66 +156,8 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     setParams();
   }
 
-    public short encrypt(
-      Cipher cipher,
-      byte[] inBuffer,
-      short inOffset,
-      short inLength,
-      byte[] outBuffer,
-      short outOffset) {
-    ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
-    return 0;
-  }
-
-    public short decrypt(
-      Cipher cipher,
-      byte[] inBuffer,
-      short inOffset,
-      short inLength,
-      byte[] outBuffer,
-      short outOffset) {
-    ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
-    return 0;
-  }
-
-  /*
-   * Set ECC domain parameters.
-   */
-  protected void setParams() {
-    ECParams params = null;
-    switch (getMechanism()) {
-      case PIV.ID_ALG_ECC_P256:
-        params = new ECParamsP256();
-        break;
-      case PIV.ID_ALG_ECC_P384:
-        params = new ECParamsP384();
-        break;
-      default:
-        ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-    }
-
-    byte[] a = params.getA();
-    byte[] b = params.getB();
-    byte[] g = params.getG();
-    byte[] p = params.getP();
-    byte[] r = params.getN();
-
-    ((ECPublicKey) publicKey).setA(a, (short) 0, (short) (a.length));
-    ((ECPublicKey) publicKey).setB(b, (short) 0, (short) (b.length));
-    ((ECPublicKey) publicKey).setG(g, (short) 0, (short) (g.length));
-    ((ECPublicKey) publicKey).setR(r, (short) 0, (short) (r.length));
-    ((ECPublicKey) publicKey).setFieldFP(p, (short) 0, (short) (p.length));
-    ((ECPublicKey) publicKey).setK(params.getH());
-
-    ((ECPrivateKey) privateKey).setA(a, (short) 0, (short) (a.length));
-    ((ECPrivateKey) privateKey).setB(b, (short) 0, (short) (b.length));
-    ((ECPrivateKey) privateKey).setG(g, (short) 0, (short) (g.length));
-    ((ECPrivateKey) privateKey).setR(r, (short) 0, (short) (r.length));
-    ((ECPrivateKey) privateKey).setFieldFP(p, (short) 0, (short) (p.length));
-    ((ECPrivateKey) privateKey).setK(params.getH());
-  }
-
-  public short doEcdh(
+  @Override
+  public short keyAgreement(
       byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
     switch (getMechanism()) {
       case PIV.ID_ALG_ECC_P256:
@@ -242,9 +184,11 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     return keyAgreement.generateSecret(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
+  @Override
   public short sign(
       byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
 
+    Signature signer = null;
     // NOTE: The assumption with the following code is that this method will only be called
     // once per power/reset cycle of the card.  If that is not your use case move the calls
     // to init outside of their respective if blocks.
@@ -252,23 +196,23 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
       case MessageDigest.LENGTH_SHA:
         if (sha1Signer == null) {
           sha1Signer = Signature.getInstance(Signature.ALG_ECDSA_SHA, false);
-          sha1Signer.init(privateKey, Signature.MODE_SIGN);
         }
         signer = sha1Signer;
         break;
       case MessageDigest.LENGTH_SHA_256:
         if (sha256Signer == null) {
           sha256Signer = Signature.getInstance(Signature.ALG_ECDSA_SHA_256, false);
-          sha256Signer.init(privateKey, Signature.MODE_SIGN);
         }
         signer = sha256Signer;
         break;
       default:
         ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
     }
+    signer.init(privateKey, Signature.MODE_SIGN);
     return signer.signPreComputedHash(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
+  @Override
   public short marshalPublic(byte[] scratch, short offset) {
     TLVWriter tlvWriter = new TLVWriter();
 
@@ -300,11 +244,13 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
    *
    * @throws ISOException reason = SW_FUNC_NOT_SUPPORTED
    */
-    public short getBlockLength() {
+  @Override
+  public short getBlockLength() {
     ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
     return 0;
   }
 
+  @Override
   public short getKeyLength() {
     switch (getMechanism()) {
       case PIV.ID_ALG_ECC_P256:
@@ -319,7 +265,8 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     }
   }
 
-    public void generate() {
+  @Override
+  public void generate() {
     if (privateKey != null) {
       privateKey.clearKey();
       privateKey = null;
@@ -335,5 +282,44 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     }
     allocate();
     super.generate();
+  }
+
+  /*
+   * Set ECC domain parameters.
+   */
+  protected void setParams() {
+    ECParams params = null;
+    switch (getMechanism()) {
+      case PIV.ID_ALG_ECC_P256:
+        params = ECParamsP256.Instance();
+        break;
+      case PIV.ID_ALG_ECC_P384:
+        params = ECParamsP384.Instance();
+        break;
+      default:
+        ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+    }
+
+    byte[] a = params.getA();
+    byte[] b = params.getB();
+    byte[] g = params.getG();
+    byte[] p = params.getP();
+    byte[] r = params.getN();
+
+    ((ECPublicKey) publicKey).setA(a, (short) 0, (short) (a.length));
+    ((ECPublicKey) publicKey).setB(b, (short) 0, (short) (b.length));
+    ((ECPublicKey) publicKey).setG(g, (short) 0, (short) (g.length));
+    ((ECPublicKey) publicKey).setR(r, (short) 0, (short) (r.length));
+    ((ECPublicKey) publicKey).setFieldFP(p, (short) 0, (short) (p.length));
+    ((ECPublicKey) publicKey).setK(params.getH());
+
+    // if you are using JCOP 3.0.5 the following code block can be replaced with
+    // ((ECPrivateKey) privateKey).copyDomainParametersFrom(((ECPublicKey) publicKey))
+    ((ECPrivateKey) privateKey).setA(a, (short) 0, (short) (a.length));
+    ((ECPrivateKey) privateKey).setB(b, (short) 0, (short) (b.length));
+    ((ECPrivateKey) privateKey).setG(g, (short) 0, (short) (g.length));
+    ((ECPrivateKey) privateKey).setR(r, (short) 0, (short) (r.length));
+    ((ECPrivateKey) privateKey).setFieldFP(p, (short) 0, (short) (p.length));
+    ((ECPrivateKey) privateKey).setK(params.getH());
   }
 }

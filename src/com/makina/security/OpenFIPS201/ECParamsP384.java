@@ -32,6 +32,17 @@ package com.makina.security.OpenFIPS201;
  */
 final class ECParamsP384 extends ECParams {
 
+  private static ECParams instance;
+
+  private ECParamsP384(){ }
+
+  public static ECParams Instance() {
+    if (instance == null) {
+      instance = new ECParamsP384();
+    }
+    return instance;
+  }
+
   // Curve polynomial element a
   public static final byte[] a = {
     (byte) 0xFF,

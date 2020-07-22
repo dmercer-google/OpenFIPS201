@@ -53,7 +53,6 @@ public final class PIVSecurityProvider {
   public final CVMPIN globalPIN; // 00 - Global PIN
   // Cryptographic Service Providers
   private final Cipher cspAES;
-  private final Cipher cspRSA;
   private final Cipher cspTDEA;
   private final RandomData cspRNG;
   // Security Status Flags
@@ -65,7 +64,6 @@ public final class PIVSecurityProvider {
 
     // Create our CSPs
     cspAES = Cipher.getInstance(Cipher.ALG_AES_BLOCK_128_ECB_NOPAD, false);
-    cspRSA = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
     cspTDEA = Cipher.getInstance(Cipher.ALG_DES_ECB_NOPAD, false);
     cspRNG = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
 
@@ -338,7 +336,10 @@ public final class PIVSecurityProvider {
       byte[] outBuffer,
       short outOffset) {
 
-    Cipher cipher;
+    if (!(key instanceof PIVKeyObjectSYM)) {
+      ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
+    }
+    Cipher cipher = null;
 
     switch (key.getMechanism()) {
       case PIV.ID_ALG_DEFAULT:
@@ -352,17 +353,26 @@ public final class PIVSecurityProvider {
         cipher = cspAES;
         break;
 
-      case PIV.ID_ALG_RSA_1024:
-      case PIV.ID_ALG_RSA_2048:
-        cipher = cspRSA;
-        break;
-
       default:
         ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-        return (short) 0; // Keep compiler happy
     }
 
-    return key.encrypt(cipher, inBuffer, inOffset, inLength, outBuffer, outOffset);
+    return ((PIVKeyObjectSYM) key)
+        .encrypt(cipher, inBuffer, inOffset, inLength, outBuffer, outOffset);
+  }
+
+  public short sign(
+      PIVKeyObject key,
+      byte[] inBuffer,
+      short inOffset,
+      short inLength,
+      byte[] outBuffer,
+      short outOffset) {
+
+    if (!(key instanceof PIVKeyObjectPKI)) {
+      ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
+    }
+    return ((PIVKeyObjectPKI) key).sign(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
   /**

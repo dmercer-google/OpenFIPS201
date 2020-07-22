@@ -29,7 +29,6 @@ package com.makina.security.OpenFIPS201;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
-import javacardx.crypto.Cipher;
 
 /** Provides functionality for PIV key objects */
 public abstract class PIVKeyObject extends PIVObject {
@@ -130,21 +129,7 @@ public abstract class PIVKeyObject extends PIVObject {
     return (securityFlags[FLAGS_AUTHENTICATED]);
   }
 
-  public abstract short decrypt(
-      Cipher cipher,
-      byte[] inBuffer,
-      short inOffset,
-      short inLength,
-      byte[] outBuffer,
-      short outOffset);
-
-  public abstract short encrypt(
-      Cipher cipher,
-      byte[] inBuffer,
-      short inOffset,
-      short inLength,
-      byte[] outBuffer,
-      short outOffset);
+  protected abstract void allocate();
 
   public abstract short getBlockLength();
 

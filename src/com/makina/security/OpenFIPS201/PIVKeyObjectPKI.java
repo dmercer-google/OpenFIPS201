@@ -50,6 +50,7 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
     return true;
   }
 
+  @Override
   public void clear() {
     if (privateKey != null) {
       privateKey.clearKey();
@@ -64,6 +65,7 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
     }
   }
 
+  @Override
   public boolean isInitialised() {
     return (privateKey != null
         && privateKey.isInitialized()
@@ -73,13 +75,22 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
 
   public void generate() {
     if (privateKey == null || publicKey == null) allocate();
+
+    // Normally we only "new" objects in a constructor but in this case
+    // we cannot new the generator until the privateKey and publicKey
+    // objects exist which happens in allocate which is called outside the
+    // context of any constructor.
     new KeyPair(publicKey, privateKey).genKeyPair();
+    if (JCSystem.isObjectDeletionSupported()) {
+      JCSystem.requestObjectDeletion();
+    }
   }
 
   public abstract short sign(
       byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);
 
-  protected abstract void allocate();
+  public abstract short keyAgreement(
+      byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);
 
   public abstract short marshalPublic(byte[] scratch, short offset);
 }

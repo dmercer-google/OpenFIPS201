@@ -103,7 +103,6 @@ final class ECParamsP256 extends ECParams {
     (byte) 0x60,
     (byte) 0x4B
   };
-
   // Base point
   private static final byte[] G = {
     (byte) 0x04,
@@ -172,7 +171,6 @@ final class ECParamsP256 extends ECParams {
     (byte) 0x51,
     (byte) 0xF5
   };
-
   // Field definition
   private static final byte[] p = {
     (byte) 0xFF,
@@ -208,7 +206,6 @@ final class ECParamsP256 extends ECParams {
     (byte) 0xFF,
     (byte) 0xFF
   };
-
   // Order n of G
   private static final byte[] n = {
     (byte) 0xFF,
@@ -244,6 +241,16 @@ final class ECParamsP256 extends ECParams {
     (byte) 0x25,
     (byte) 0x51
   };
+  private static ECParams instance;
+
+  private ECParamsP256() {}
+
+  public static ECParams Instance() {
+    if (instance == null) {
+      instance = new ECParamsP256();
+    }
+    return instance;
+  }
 
   protected byte[] getA() {
     return a;

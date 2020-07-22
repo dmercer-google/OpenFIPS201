@@ -48,6 +48,7 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
     super(id, modeContact, modeContactless, mechanism, role);
   }
 
+  @Override
   public void updateElement(byte element, byte[] buffer, short offset, short length) {
 
     if (length != getKeyLength()) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
@@ -93,7 +94,8 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
     }
   }
 
-  private void allocate() {
+  @Override
+  protected void allocate() {
 
     switch (header[HEADER_MECHANISM]) {
       case PIV.ID_ALG_DEFAULT:
@@ -124,14 +126,61 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
     }
   }
 
+  @Override
   public void clear() {
     if (key != null) {
       key.clearKey();
     }
   }
 
+  @Override
   public boolean isInitialised() {
     return (key != null && key.isInitialized());
+  }
+
+  @Override
+  public boolean isAsymmetric() {
+    return false;
+  }
+
+  @Override
+  public short getBlockLength() {
+    switch (getMechanism()) {
+      case PIV.ID_ALG_DEFAULT:
+      case PIV.ID_ALG_TDEA_3KEY:
+        return (short) 8;
+
+      case PIV.ID_ALG_AES_128:
+      case PIV.ID_ALG_AES_192:
+      case PIV.ID_ALG_AES_256:
+        return (short) 16;
+
+      default:
+        ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+        return (short) 0; // Keep compiler happy
+    }
+  }
+
+  @Override
+  public short getKeyLength() {
+    switch (getMechanism()) {
+      case PIV.ID_ALG_DEFAULT:
+      case PIV.ID_ALG_TDEA_3KEY:
+        return KeyBuilder.LENGTH_DES3_3KEY / 8;
+
+      case PIV.ID_ALG_AES_128:
+        return KeyBuilder.LENGTH_AES_128 / 8;
+
+      case PIV.ID_ALG_AES_192:
+        return KeyBuilder.LENGTH_AES_192 / 8;
+
+      case PIV.ID_ALG_AES_256:
+        return KeyBuilder.LENGTH_AES_256 / 8;
+
+      default:
+        ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+        return (short) 0; // Keep compiler happy
+    }
   }
 
   public short encrypt(
@@ -157,47 +206,5 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
       short outOffset) {
     cipher.init(key, Cipher.MODE_DECRYPT);
     return cipher.doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
-  }
-
-  public boolean isAsymmetric() {
-    return false;
-  }
-
-  public short getBlockLength() {
-    switch (getMechanism()) {
-      case PIV.ID_ALG_DEFAULT:
-      case PIV.ID_ALG_TDEA_3KEY:
-        return (short) 8;
-
-      case PIV.ID_ALG_AES_128:
-      case PIV.ID_ALG_AES_192:
-      case PIV.ID_ALG_AES_256:
-        return (short) 16;
-
-      default:
-        ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-        return (short) 0; // Keep compiler happy
-    }
-  }
-
-  public short getKeyLength() {
-    switch (getMechanism()) {
-      case PIV.ID_ALG_DEFAULT:
-      case PIV.ID_ALG_TDEA_3KEY:
-        return KeyBuilder.LENGTH_DES3_3KEY / 8;
-
-      case PIV.ID_ALG_AES_128:
-        return KeyBuilder.LENGTH_AES_128 / 8;
-
-      case PIV.ID_ALG_AES_192:
-        return KeyBuilder.LENGTH_AES_192 / 8;
-
-      case PIV.ID_ALG_AES_256:
-        return KeyBuilder.LENGTH_AES_256 / 8;
-
-      default:
-        ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-        return (short) 0; // Keep compiler happy
-    }
   }
 }
