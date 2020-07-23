@@ -28,7 +28,6 @@ package com.makina.security.OpenFIPS201;
 
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
-import javacard.framework.JCSystem;
 import javacard.security.AESKey;
 import javacard.security.DESKey;
 import javacard.security.KeyBuilder;
@@ -135,9 +134,7 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
     if (key != null) {
       key.clearKey();
       key = null;
-      if (JCSystem.isObjectDeletionSupported()) {
-        JCSystem.requestObjectDeletion();
-      }
+      runGc();
     }
   }
 

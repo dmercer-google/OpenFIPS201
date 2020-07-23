@@ -28,7 +28,6 @@ package com.makina.security.OpenFIPS201;
 
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
-import javacard.framework.JCSystem;
 import javacard.security.*;
 
 /** Provides functionality for ECC PIV key objects */
@@ -36,15 +35,22 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
   // Uncompressed ECC public keys are marshaled as the concatenation of:
   // CONST_POINT_UNCOMPRESSED | X | Y
   // where the length of the X and Y coordinates is the byte length of the key.
-  public static final short CONST_MARSHALLED_PUB_KEY_LEN_P256 =
+  private static final short CONST_MARSHALLED_PUB_KEY_LEN_P256 =
       (short) ((KeyBuilder.LENGTH_EC_FP_256 / 8) * 2 + 1);
-  public static final short CONST_MARSHALLED_PUB_KEY_LEN_P384 =
+  private static final short CONST_MARSHALLED_PUB_KEY_LEN_P384 =
       (short) ((KeyBuilder.LENGTH_EC_FP_384 / 8) * 2 + 1);
   // From SP 800-73-4 Part 2 3.3.2
   private static final byte CONST_POINT_UNCOMPRESSED = (byte) 0x04;
+
+  // Because the type of hash used is generally consistent for a particular card deployment
+  // we will allocate the particular signer we need lazily.
   private static Signature sha1Signer;
   private static Signature sha256Signer;
+
+  // The ECC public key element tag
   public final byte ELEMENT_ECC_POINT = (byte) 0x86;
+
+  // The ECC private key element tag
   public final byte ELEMENT_ECC_SECRET = (byte) 0x87;
 
   public PIVKeyObjectECC(
@@ -52,24 +58,45 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     super(id, modeContact, modeContactless, mechanism, role);
   }
 
+  /**
+   * Updates the elements of the keypair with new values.
+   *
+   * <p>Notes:
+   *
+   * <ul>
+   *   <li>If the card does not support ObjectDeletion, repeatedly calling this method may exhaust
+   *       NV RAM.
+   *   <li>The ELEMENT_ECC_POINT element must be formatted as an octet string as per ANSI X9.62.
+   *   <li>The ELEMENT_ECC_SECRET must be formatted as a big-endian, right-aligned big number.
+   *   <li>Updating only one element may render the card in a non-deterministic state
+   * </ul>
+   *
+   * @param element the element to update
+   * @param buffer containing the updated element
+   * @param offset first byte of the element in the buffer
+   * @param length the length og the element
+   */
   @Override
   public void updateElement(byte element, byte[] buffer, short offset, short length) {
-    byte mechanism = getMechanism();
-
+    short keyLen = 0;
     switch (element) {
-        // ECC Public Key
       case ELEMENT_ECC_POINT:
-        switch (mechanism) {
+        // ECC Public Key
+        switch (getMechanism()) {
           case PIV.ID_ALG_ECC_P256:
             if (length != CONST_MARSHALLED_PUB_KEY_LEN_P256) {
               ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
             }
+            keyLen = KeyBuilder.LENGTH_EC_FP_256;
             break;
+
           case PIV.ID_ALG_ECC_P384:
             if (length != CONST_MARSHALLED_PUB_KEY_LEN_P384) {
               ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
             }
+            keyLen = KeyBuilder.LENGTH_EC_FP_384;
             break;
+
           default:
             ISOException.throwIt(ISO7816.SW_WRONG_DATA);
             break;
@@ -79,44 +106,31 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
         if (buffer[offset] != CONST_POINT_UNCOMPRESSED) {
           ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         }
-
-        if (publicKey != null) {
-          publicKey.clearKey();
-          publicKey = null;
-          if (JCSystem.isObjectDeletionSupported()) {
-            JCSystem.requestObjectDeletion();
-          }
-        }
-        allocate();
+        allocatePublic(KeyBuilder.TYPE_EC_FP_PUBLIC, keyLen);
         ((ECPublicKey) publicKey).setW(buffer, offset, length);
         break;
 
-        // ECC Private Key
       case ELEMENT_ECC_SECRET:
-        switch (mechanism) {
+        switch (getMechanism()) {
           case PIV.ID_ALG_ECC_P256:
             if (length != (short) (KeyBuilder.LENGTH_EC_FP_256 / 8)) {
               ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
             }
+            keyLen = KeyBuilder.LENGTH_EC_FP_256;
             break;
           case PIV.ID_ALG_ECC_P384:
             if (length != (short) (KeyBuilder.LENGTH_EC_FP_384 / 8)) {
               ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
             }
+            keyLen = KeyBuilder.LENGTH_EC_FP_384;
             break;
           default:
             ISOException.throwIt(ISO7816.SW_WRONG_DATA);
             break;
         }
 
-        if (privateKey != null) {
-          privateKey.clearKey();
-          privateKey = null;
-          if (JCSystem.isObjectDeletionSupported()) {
-            JCSystem.requestObjectDeletion();
-          }
-        }
-        allocate();
+        // ECC Private Key
+        allocatePrivate(KeyBuilder.TYPE_EC_FP_PRIVATE, keyLen);
         ((ECPrivateKey) privateKey).setS(buffer, offset, length);
         break;
 
@@ -131,6 +145,12 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     }
   }
 
+  /**
+   * Allocates the public and private key objects.
+   *
+   * <p>Note: If the card does not support ObjectDeletion calling this method repeatedly may result
+   * in exhaustion of the cards NV RAM.
+   */
   @Override
   protected void allocate() {
     short keyLength = (short) 0;
@@ -146,16 +166,20 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
         break;
     }
 
-    if (publicKey == null) {
-      publicKey = (ECPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_EC_FP_PUBLIC, keyLength, false);
-    }
-    if (privateKey == null) {
-      privateKey =
-          (ECPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_EC_FP_PRIVATE, keyLength, false);
-    }
+    allocate(KeyBuilder.TYPE_EC_FP_PUBLIC, KeyBuilder.TYPE_EC_FP_PRIVATE, keyLength);
     setParams();
   }
 
+  /**
+   * Performs an ECDH key agreement
+   *
+   * @param inBuffer the public key of the other party
+   * @param inOffset the the location of first byte of the public key
+   * @param inLength the length of the public key
+   * @param outBuffer the computed secret
+   * @param outOffset the location of the first byte of the computed secret
+   * @return the length of the computed secret
+   */
   @Override
   public short keyAgreement(
       byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
@@ -184,6 +208,16 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     return keyAgreement.generateSecret(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
+  /**
+   * Signs the passed precomputed hash
+   *
+   * @param inBuffer contains the precomputed hash
+   * @param inOffset the location of the first byte of the hash
+   * @param inLength the length og the computed hash
+   * @param outBuffer the buffer to contain the signature
+   * @param outOffset the location of the first byte of the signature
+   * @return the length of the signature
+   */
   @Override
   public short sign(
       byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
@@ -212,6 +246,13 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     return signer.signPreComputedHash(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
+  /**
+   * The public key marshalled per ANSI X9.62
+   *
+   * @param scratch the buffer to marshal the key to
+   * @param offset the location of the first byte of the marshalled key
+   * @return the length of the marshalled public key
+   */
   @Override
   public short marshalPublic(byte[] scratch, short offset) {
     TLVWriter tlvWriter = new TLVWriter();
@@ -250,6 +291,11 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     return 0;
   }
 
+  /**
+   * The length, in bytes, of the key
+   *
+   * @return the length of the key
+   */
   @Override
   public short getKeyLength() {
     switch (getMechanism()) {
@@ -265,28 +311,19 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     }
   }
 
+  /**
+   * Generates a new key pair
+   *
+   * <p>Note: If the card does not support ObjectDeletion calling this method repeatedly may result
+   * in exhaustion of the cards NV RAM.
+   */
   @Override
   public void generate() {
-    if (privateKey != null) {
-      privateKey.clearKey();
-      privateKey = null;
-    }
-
-    if (publicKey != null) {
-      publicKey.clearKey();
-      publicKey = null;
-    }
-
-    if (JCSystem.isObjectDeletionSupported()) {
-      JCSystem.requestObjectDeletion();
-    }
     allocate();
     super.generate();
   }
 
-  /*
-   * Set ECC domain parameters.
-   */
+  /** Set ECC domain parameters. */
   protected void setParams() {
     ECParams params = null;
     switch (getMechanism()) {

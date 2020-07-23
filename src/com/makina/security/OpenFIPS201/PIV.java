@@ -870,7 +870,7 @@ public final class PIV {
     // PUK's retry counter shall remain unchanged.11 If the PIV Card Application returns status word
     // '63 CX', then the retry counter associated with the PIN shall not be reset, the security
     // status of the PIN's key reference shall be set to FALSE, and the PUK's retry counter shall
-	// be decremented by one.
+    // be decremented by one.
 
     // NOTES:
     // - We implicitly decrement the PUK counter if the PUK is incorrect (63CX)
@@ -1538,7 +1538,7 @@ public final class PIV {
     // The PIV Card Application shall enforce the minimum length requirement of six bytes for the
     // PIV Card Application PIN (i.e., shall verify that at least the first six bytes of the value
     // presented to the card command interface are in the range 0x30-0x39) as well as the other
-	// formatting requirements specified in this section.
+    // formatting requirements specified in this section.
 
     // If the Global PIN is used by the PIV Card Application, then the above encoding, length,
     // padding, and enforcement of minimum PIN length requirements for the PIV Card Application

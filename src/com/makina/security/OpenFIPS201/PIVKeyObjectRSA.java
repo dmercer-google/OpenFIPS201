@@ -28,9 +28,7 @@ package com.makina.security.OpenFIPS201;
 
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
-import javacard.security.KeyBuilder;
-import javacard.security.RSAPrivateKey;
-import javacard.security.RSAPublicKey;
+import javacard.security.*;
 import javacardx.crypto.Cipher;
 
 public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
@@ -54,6 +52,22 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
     super(id, modeContact, modeContactless, mechanism, role);
   }
 
+  /**
+   * Updates the elements of the keypair with new values.
+   *
+   * <p>Notes:
+   *
+   * <ul>
+   *   <li>If the card does not support ObjectDeletion, repeatedly calling this method may exhaust
+   *       NV RAM.
+   *   <li>Updating only one element may render the card in a non-deterministic state
+   * </ul>
+   *
+   * @param element the element to update
+   * @param buffer containing the updated element
+   * @param offset first byte of the element in the buffer
+   * @param length the length og the element
+   */
   @Override
   public void updateElement(byte element, byte[] buffer, short offset, short length) {
 
@@ -61,24 +75,17 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
 
         // RSA Modulus Element
       case ELEMENT_RSA_N:
-        if (length != getKeyLength()) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
-        if (publicKey == null || privateKey == null) allocate();
-        ((RSAPublicKey) publicKey).setModulus(buffer, offset, length);
-        ((RSAPrivateKey) privateKey).setModulus(buffer, offset, length);
+        setModulus(buffer, offset, length);
         break;
 
         // RSA Public Exponent
       case ELEMENT_RSA_E:
-        if (length == (short) 0) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
-        if (publicKey == null) allocate();
-        ((RSAPublicKey) publicKey).setExponent(buffer, offset, length);
+        setPublicExponent(buffer, offset, length);
         break;
 
         // RSA Private Exponent
       case ELEMENT_RSA_D:
-        if (length != getKeyLength()) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
-        if (privateKey == null) allocate();
-        ((RSAPrivateKey) privateKey).setExponent(buffer, offset, length);
+        setPrivateExponent(buffer, offset, length);
         break;
 
         // Clear Key
@@ -99,8 +106,9 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
    * @param offset The starting offset to write to
    * @param length The length of the exponent to write
    */
-  public void setPrivateExponent(byte[] buffer, short offset, short length) {
-    if (privateKey == null) allocate();
+  private void setPrivateExponent(byte[] buffer, short offset, short length) {
+    if (privateKey == null)
+      allocatePrivate(KeyBuilder.TYPE_RSA_PRIVATE, (short) (getKeyLength() * 8));
     ((RSAPrivateKey) privateKey).setExponent(buffer, offset, length);
   }
 
@@ -112,7 +120,7 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
    * @param length The length of the exponent to write
    */
   public void setPublicExponent(byte[] buffer, short offset, short length) {
-    if (publicKey == null) allocate();
+    if (publicKey == null) allocatePublic(KeyBuilder.TYPE_RSA_PUBLIC, (short) (getKeyLength() * 8));
     ((RSAPublicKey) publicKey).setExponent(buffer, offset, length);
   }
 
@@ -124,8 +132,13 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
    * @param length The length of the modulus to write
    */
   public void setModulus(byte[] buffer, short offset, short length) {
-    if (privateKey == null || publicKey == null) allocate();
+    if (length != getKeyLength()) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+
+    if (privateKey == null)
+      allocatePrivate(KeyBuilder.TYPE_RSA_PRIVATE, (short) (getKeyLength() * 8));
     ((RSAPrivateKey) privateKey).setModulus(buffer, offset, length);
+
+    if (publicKey == null) allocatePublic(KeyBuilder.TYPE_RSA_PUBLIC, (short) (getKeyLength() * 8));
     ((RSAPublicKey) publicKey).setModulus(buffer, offset, length);
   }
 
@@ -151,6 +164,12 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
     return ((RSAPublicKey) publicKey).getModulus(buffer, offset);
   }
 
+  /**
+   * Allocates the public and private key objects.
+   *
+   * <p>Note: If the card does not support ObjectDeletion calling this method repeatedly may result
+   * in exhaustion of the cards NV RAM.
+   */
   @Override
   protected void allocate() {
     short keyLength = 0;
@@ -169,10 +188,19 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
         break;
     }
 
-    privateKey = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, keyLength, false);
-    publicKey = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, keyLength, false);
+    allocate(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.TYPE_RSA_PRIVATE, keyLength);
   }
 
+  /**
+   * Signs the passed precomputed hash
+   *
+   * @param inBuffer contains the precomputed hash
+   * @param inOffset the location of the first byte of the hash
+   * @param inLength the length og the computed hash
+   * @param outBuffer the buffer to contain the signature
+   * @param outOffset the location of the first byte of the signature
+   * @return the length of the signature
+   */
   @Override
   public short sign(
       byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
@@ -186,6 +214,7 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
     return signer.doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
+  /** Not yet implemented for RSA keys. */
   @Override
   public short keyAgreement(
       byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
@@ -194,6 +223,13 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
     return 0;
   }
 
+  /**
+   * Marshals a public key
+   *
+   * @param scratch the buffer to marshal the key to
+   * @param offset the location of the first byte of the marshalled key
+   * @return the length of the marshalled public key
+   */
   @Override
   public short marshalPublic(byte[] scratch, short offset) {
     TLVWriter tlvWriter = new TLVWriter();
@@ -219,12 +255,14 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
     return tlvWriter.finish();
   }
 
+  /** @return the block length of the key. */
   @Override
   public short getBlockLength() {
     // RSA blocks are the same length as their keys
     return getKeyLength();
   }
 
+  /** @return The length, in bytes, of the key */
   @Override
   public short getKeyLength() {
     switch (getMechanism()) {

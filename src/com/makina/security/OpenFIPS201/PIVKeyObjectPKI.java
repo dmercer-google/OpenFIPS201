@@ -26,15 +26,9 @@
 
 package com.makina.security.OpenFIPS201;
 
-import javacard.framework.JCSystem;
-import javacard.security.KeyAgreement;
-import javacard.security.KeyPair;
-import javacard.security.PrivateKey;
-import javacard.security.PublicKey;
+import javacard.security.*;
 
 public abstract class PIVKeyObjectPKI extends PIVKeyObject {
-
-  // Clear any key material from this object
   public static final byte ELEMENT_CLEAR = (byte) 0xFF;
   public final short CONST_TAG_RESPONSE = (short) 0x7F49;
   protected PrivateKey privateKey;
@@ -46,25 +40,41 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
     super(id, modeContact, modeContactless, mechanism, role);
   }
 
+  /** @return true */
+  @Override
   public boolean isAsymmetric() {
     return true;
   }
 
+  /**
+   * Clears the keypair elements if they exist and frees the ref to the private key.
+   *
+   * <p>Note: If the card does not support ObjectDeletion, repeatedly calling this method may
+   * exhaust NV RAM.
+   */
   @Override
   public void clear() {
+    clearPrivate();
+    clearPublic();
+  }
+
+  /** Clears and dereferences the private key */
+  private void clearPrivate() {
     if (privateKey != null) {
       privateKey.clearKey();
       privateKey = null;
-    }
-    if (publicKey != null) {
-      publicKey.clearKey();
-      publicKey = null;
-    }
-    if (JCSystem.isObjectDeletionSupported()) {
-      JCSystem.requestObjectDeletion();
+      runGc();
     }
   }
 
+  /** Clears the public key */
+  private void clearPublic() {
+    if (publicKey != null) {
+      publicKey.clearKey();
+    }
+  }
+
+  /** @return true if both the publicKey and privateKey exist and are initialized. */
   @Override
   public boolean isInitialised() {
     return (privateKey != null
@@ -73,24 +83,100 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
         && publicKey.isInitialized());
   }
 
+  /**
+   * Clears any existing keys and allocates new public and private key objects. The publicKey object
+   * is reused if it exists and is of the same type and length as that being requested. Otherwise it
+   * is cleared and recreated.
+   *
+   * <p>Note: If the card does not support Object deletion, repeatedly calling this method may
+   * exhaust NV RAM.
+   *
+   * @param publicKeyType the type of public key to generate from KeyBuilder.Type_ ...
+   * @param privateKeyType the type of private key to generate from KeyBuilder.Type_ ...
+   * @param keyLength the length of key to generate in bits from KeyBuilder.LENGTH_ ...
+   */
+  protected void allocate(byte publicKeyType, byte privateKeyType, short keyLength) {
+    allocatePrivate(privateKeyType, keyLength);
+    allocatePublic(publicKeyType, keyLength);
+  }
+
+  /**
+   * Clears and reallocates a private key.
+   *
+   * @param privateKeyType the type of private key to generate from KeyBuilder.Type_ ...
+   * @param keyLength the length of key to generate in bits from KeyBuilder.LENGTH_ ...
+   */
+  protected void allocatePrivate(byte privateKeyType, short keyLength) {
+    clearPrivate();
+    privateKey = (PrivateKey) KeyBuilder.buildKey(privateKeyType, keyLength, false);
+  }
+
+  /**
+   * Clears and if necessary reallocates a public key.
+   *
+   * @param publicKeyType the type of private key to generate from KeyBuilder.Type_ ...
+   * @param keyLength the length of key to generate in bits from KeyBuilder.LENGTH_ ...
+   */
+  protected void allocatePublic(byte publicKeyType, short keyLength) {
+    clearPublic();
+    if (publicKey == null) {
+      publicKey = (PublicKey) KeyBuilder.buildKey(publicKeyType, keyLength, false);
+    } else if (publicKey.getSize() != keyLength || publicKey.getType() != publicKeyType) {
+      publicKey = null;
+      runGc();
+      publicKey = (PublicKey) KeyBuilder.buildKey(publicKeyType, keyLength, false);
+    }
+  }
+
+  /**
+   * Generates a new random keypair.
+   *
+   * <p>Note: If the card does not support Object deletion, repeatedly calling this method may
+   * exhaust NV RAM.
+   */
   public void generate() {
-    if (privateKey == null || publicKey == null) allocate();
+    allocate();
 
     // Normally we only "new" objects in a constructor but in this case
     // we cannot new the generator until the privateKey and publicKey
     // objects exist which happens in allocate which is called outside the
     // context of any constructor.
     new KeyPair(publicKey, privateKey).genKeyPair();
-    if (JCSystem.isObjectDeletionSupported()) {
-      JCSystem.requestObjectDeletion();
-    }
+    runGc();
   }
 
+  /**
+   * Signs the passed precomputed hash
+   *
+   * @param inBuffer contains the precomputed hash
+   * @param inOffset the location of the first byte of the hash
+   * @param inLength the length og the computed hash
+   * @param outBuffer the buffer to contain the signature
+   * @param outOffset the location of the first byte of the signature
+   * @return the length of the signature
+   */
   public abstract short sign(
       byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);
 
+  /**
+   * Performs a key agreement
+   *
+   * @param inBuffer the public key of the other party
+   * @param inOffset the the location of first byte of the public key
+   * @param inLength the length of the public key
+   * @param outBuffer the computed secret
+   * @param outOffset the location of the first byte of the computed secret
+   * @return the length of the computed secret
+   */
   public abstract short keyAgreement(
       byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);
 
+  /**
+   * Marshals a public key
+   *
+   * @param scratch the buffer to marshal the key to
+   * @param offset the location of the first byte of the marshalled key
+   * @return the length of the marshalled public key
+   */
   public abstract short marshalPublic(byte[] scratch, short offset);
 }

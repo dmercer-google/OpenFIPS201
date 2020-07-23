@@ -58,9 +58,7 @@ public final class PIVDataObject extends PIVObject {
       ISOException.throwIt(ISO7816.SW_DATA_INVALID);
     } else if (length == 0) {
       content = null;
-      if (JCSystem.isObjectDeletionSupported()) {
-        JCSystem.requestObjectDeletion();
-      }
+      runGc();
     } else if (content == null) {
       content = new byte[length];
     } else if (length > (short) content.length) {
@@ -95,8 +93,9 @@ public final class PIVDataObject extends PIVObject {
    * Wipes all data from the current object
    */
   public void clear() {
-    if (content == null) return;
-    Util.arrayFillNonAtomic(content, (short) 0, (short) content.length, (byte) 0x00);
-    bytesAllocated = 0;
+    if (content != null) {
+      Util.arrayFillNonAtomic(content, (short) 0, (short) content.length, (byte) 0x00);
+      bytesAllocated = 0;
+    }
   }
 }
