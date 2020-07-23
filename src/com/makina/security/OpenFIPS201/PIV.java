@@ -203,13 +203,13 @@ public final class PIV {
 
     // If the currently selected application is the PIV Card Application when the SELECT command is
     // given and the AID in the data field of the SELECT command is either the AID of the PIV Card
-    // Application or the right-truncated version thereof, then the PIV Card Application shall continue
-    // to be the currently selected card application and the setting of all security status indicators
-    // in the PIV Card Application shall be unchanged.
+    // Application or the right-truncated version thereof, then the PIV Card Application shall
+    // continue to be the currently selected card application and the setting of all security status
+    // indicators in the PIV Card Application shall be unchanged.
 
     // If the currently selected application is the PIV Card Application when the SELECT command is
-    // given and the AID in the data field of the SELECT command is not the PIV Card Application (or the
-    // right truncated version thereof), but a valid AID supported by the ICC, then the PIV Card
+    // given and the AID in the data field of the SELECT command is not the PIV Card Application (or
+    // the right truncated version thereof), but a valid AID supported by the ICC, then the PIV Card
     // Application shall be deselected and all the PIV Card Application security status indicators
     // in the PIV Card Application shall be set to FALSE.
 
@@ -519,10 +519,11 @@ public final class PIV {
     // In order to protect against blocking over the contactless interface, PIV Card Applications
     // that implement secure messaging shall define an issuer-specified intermediate retry value for
     // each of these key references and return '69 83' if the command is submitted over the
-    // contactless interface (over secure messaging or the VCI, as required for the key reference) and the
-    // current value of the retry counter associated with the key reference is at or below the issuer-specified
-    // intermediate retry value. If status word '69 83' is returned, then the comparison shall not be made, and
-    // the security status and the retry counter of the key reference shall remain unchanged.
+    // contactless interface (over secure messaging or the VCI, as required for the key reference)
+    // and the current value of the retry counter associated with the key reference is at or below
+    // the issuer-specified intermediate retry value. If status word '69 83' is returned, then the
+    // comparison shall not be made, and the security status and the retry counter of the key
+    // reference shall remain unchanged.
     if ((pin.getTriesRemaining() <= Config.PIN_RETRIES_INTERMEDIATE) && cspPIV.getIsContactless()) {
       ISOException.throwIt(SW_OPERATION_BLOCKED);
     }
@@ -573,8 +574,8 @@ public final class PIV {
     }
 
     // If P1='00', and Lc and the command data field are absent, the command can be used to retrieve
-    // the number of further retries allowed ('63 CX'), or to check whether verification is not needed
-    // ('90 00').
+    // the number of further retries allowed ('63 CX'), or to check whether verification is not
+    // needed ('90 00').
 
     // Check for blocked
     if (pin.getTriesRemaining() == (byte) 0) ISOException.throwIt(SW_OPERATION_BLOCKED);
@@ -647,13 +648,14 @@ public final class PIV {
     // Application (i.e., local key reference) and the Global PIN with key reference '00' may be
     // changed by the PIV Card Application CHANGE REFERENCE DATA command.
     // Key reference '80' reference data shall be changed by the PIV Card Application CHANGE
-    // REFERENCE DATA command. The ability to change reference data associated with key references '81' and
-    // '00' using the PIV Card Application CHANGE REFERENCE DATA command is optional.
+    // REFERENCE DATA command. The ability to change reference data associated with key references
+    // '81' and '00' using the PIV Card Application CHANGE REFERENCE DATA command is optional.
 
     // If key reference '81' is specified and the command is submitted over the contactless
     // interface (including SM or VCI), then the card command shall fail. If key reference
-    // '00' or '80' is specified and the command is not submitted over either the contact interface or the
-    // VCI, then the card command shall fail. In each case, the security status and the retry counter
+    // '00' or '80' is specified and the command is not submitted over either the contact interface
+    // or the VCI, then the card command shall fail. In each case, the security status and the
+    // retry counter
     // of the key reference shall remain unchanged.
 
     // NOTE: This is handled in the switch statement and is configurable at compile-time
@@ -734,21 +736,21 @@ public final class PIV {
     // 63CX. We choose 6A80
 
     // If the authentication data in the command data field satisfies the criteria in Section 2.4.3
-    // and matches the current value of the reference data, but the new reference data in the command
-    // data field of the command does not satisfy the criteria in Section 2.4.3, the PIV Card Application shall
-    // return status word '6A 80'.
+    // and matches the current value of the reference data, but the new reference data in the
+    // command data field of the command does not satisfy the criteria in Section 2.4.3, the PIV
+    // Card Application shall return status word '6A 80'.
     // SIMPLIFIED: If [Old PIN is GOOD] but [New PIN format is BAD], use 6A80.
 
     // If the authentication data in the command data field does not match the current value of the
     // reference data, but both the authentication data and the new reference data in the command
-    // data field of the command satisfy the criteria in Section 2.4.3, the PIV Card Application shall return
-    // status word '63 CX'.
+    // data field of the command satisfy the criteria in Section 2.4.3, the PIV Card Application
+    // shall return status word '63 CX'.
     // SIMPLIFIED: If [Old PIN format is GOOD] but [Old PIN is BAD], use 63CX and decrement.
 
     // If status word '6A 80' is returned, the security status and retry counter associated with the
-    // key reference shall remain unchanged.9 If status word '63 CX' is returned, the security status of
-    // the key reference shall be set to FALSE and the retry counter associated with the key reference shall
-    // be decremented by one.
+    // key reference shall remain unchanged.9 If status word '63 CX' is returned, the security
+    // status of the key reference shall be set to FALSE and the retry counter associated with the
+    // key reference shall be decremented by one.
 
     // If the new reference data (PIN) in the command data field of the command does not satisfy the
     // criteria in Section 2.4.3, then the PIV Card Application shall return the status word '6A
@@ -778,8 +780,8 @@ public final class PIV {
     //
 
     // If the card command succeeds, then the security status of the key reference shall be set to
-    // TRUE and the retry counter associated with the key reference shall be set to the reset retry value
-    // associated with the key reference.
+    // TRUE and the retry counter associated with the key reference shall be set to the reset retry
+    // value associated with the key reference.
 
     // STEP 1 - Update the PIN
     pin.update(buffer, offset, Config.PIN_LENGTH_MAX);
@@ -842,8 +844,8 @@ public final class PIV {
 
     // PRE-CONDITION 4 - Verify the PUK value
     // If the reset retry counter authentication data (PUK) in the command data field of the command
-    // does not match reference data associated with the PUK, then the PIV Card Application shall return the
-    // status word '63 CX'.
+    // does not match reference data associated with the PUK, then the PIV Card Application shall
+    // return the status word '63 CX'.
     if (!cspPIV.cardPUK.check(buffer, offset, Config.PIN_LENGTH_MAX)) {
 
       // Reset the PIN's security condition (see paragraph below for explanation)
@@ -861,13 +863,14 @@ public final class PIV {
 
     // If the reset retry counter authentication data (PUK) in the command data field of the command
     // does not match reference data associated with the PUK and the new reference data (PIN) in the
-    // command data field of the command does not satisfy the criteria in Section 2.4.3, then the PIV
-    // Card Application shall return either status word '6A 80' or '63 CX'. If the PIV Card Application
-    // returns status word '6A 80', then the retry counter associated with the PIN shall not be reset,
-    // the security status of the PIN's key reference shall remain unchanged, and the PUK's retry counter
-    // shall remain unchanged.11 If the PIV Card Application returns status word '63 CX', then the retry
-    // counter associated with the PIN shall not be reset, the security status of the PIN's key reference
-    // shall be set to FALSE, and the PUK's retry counter shall be decremented by one.
+    // command data field of the command does not satisfy the criteria in Section 2.4.3, then the
+    // PIV Card Application shall return either status word '6A 80' or '63 CX'. If the PIV Card
+    // Application returns status word '6A 80', then the retry counter associated with the PIN shall
+    // not be reset, the security status of the PIN's key reference shall remain unchanged, and the
+    // PUK's retry counter shall remain unchanged.11 If the PIV Card Application returns status word
+    // '63 CX', then the retry counter associated with the PIN shall not be reset, the security
+    // status of the PIN's key reference shall be set to FALSE, and the PUK's retry counter shall
+	// be decremented by one.
 
     // NOTES:
     // - We implicitly decrement the PUK counter if the PUK is incorrect (63CX)
@@ -1533,9 +1536,9 @@ public final class PIV {
     // 36 FF FF'
 
     // The PIV Card Application shall enforce the minimum length requirement of six bytes for the
-    // PIV Card Application PIN (i.e., shall verify that at least the first six bytes of the value presented
-    // to the card command interface are in the range 0x30-0x39) as well as the other formatting
-    // requirements specified in this section.
+    // PIV Card Application PIN (i.e., shall verify that at least the first six bytes of the value
+    // presented to the card command interface are in the range 0x30-0x39) as well as the other
+	// formatting requirements specified in this section.
 
     // If the Global PIN is used by the PIV Card Application, then the above encoding, length,
     // padding, and enforcement of minimum PIN length requirements for the PIV Card Application

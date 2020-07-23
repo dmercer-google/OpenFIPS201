@@ -135,7 +135,7 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
     if (key != null) {
       key.clearKey();
       key = null;
-      if(JCSystem.isObjectDeletionSupported()){
+      if (JCSystem.isObjectDeletionSupported()) {
         JCSystem.requestObjectDeletion();
       }
     }
