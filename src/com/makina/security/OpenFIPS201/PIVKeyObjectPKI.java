@@ -33,7 +33,6 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
   public final short CONST_TAG_RESPONSE = (short) 0x7F49;
   protected PrivateKey privateKey;
   protected PublicKey publicKey;
-  protected KeyAgreement keyAgreement;
 
   protected PIVKeyObjectPKI(
       byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
@@ -148,6 +147,7 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
   /**
    * Signs the passed precomputed hash
    *
+   * @param csp the csp that will do the signing.
    * @param inBuffer contains the precomputed hash
    * @param inOffset the location of the first byte of the hash
    * @param inLength the length og the computed hash
@@ -156,11 +156,17 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
    * @return the length of the signature
    */
   public abstract short sign(
-      byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);
+      Object csp,
+      byte[] inBuffer,
+      short inOffset,
+      short inLength,
+      byte[] outBuffer,
+      short outOffset);
 
   /**
    * Performs a key agreement
    *
+   * @param csp the csp to do the key agreement.
    * @param inBuffer the public key of the other party
    * @param inOffset the the location of first byte of the public key
    * @param inLength the length of the public key
@@ -169,7 +175,12 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
    * @return the length of the computed secret
    */
   public abstract short keyAgreement(
-      byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset);
+      KeyAgreement csp,
+      byte[] inBuffer,
+      short inOffset,
+      short inLength,
+      byte[] outBuffer,
+      short outOffset);
 
   /**
    * Marshals a public key

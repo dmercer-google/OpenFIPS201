@@ -39,8 +39,6 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
   public static final byte ELEMENT_RSA_E = (byte) 0x82;
   // RSA Private Exponent
   public static final byte ELEMENT_RSA_D = (byte) 0x83;
-  // Raw RSA signing is done using encryption so we use a Cipher versus a Signature
-  private static Cipher signer;
 
   // The list of elements that can be updated for an asymmetric key
   public final byte CONST_TAG_MODULUS = (byte) 0x81; // RSA - The modulus
@@ -194,6 +192,7 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
   /**
    * Signs the passed precomputed hash
    *
+   * @param csp the csp to do the signing.
    * @param inBuffer contains the precomputed hash
    * @param inOffset the location of the first byte of the hash
    * @param inLength the length og the computed hash
@@ -203,21 +202,29 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
    */
   @Override
   public short sign(
-      byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
+      Object csp,
+      byte[] inBuffer,
+      short inOffset,
+      short inLength,
+      byte[] outBuffer,
+      short outOffset) {
     if (inLength != getBlockLength()) {
       ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
     }
-    if (signer == null) {
-      signer = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
-    }
-    signer.init(publicKey, Cipher.MODE_ENCRYPT);
-    return signer.doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
+
+    ((Cipher) csp).init(privateKey, Cipher.MODE_ENCRYPT);
+    return ((Cipher) csp).doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
   /** Not yet implemented for RSA keys. */
   @Override
   public short keyAgreement(
-      byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
+      KeyAgreement csp,
+      byte[] inBuffer,
+      short inOffset,
+      short inLength,
+      byte[] outBuffer,
+      short outOffset) {
     // Not yet supported
     ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
     return 0;
@@ -227,8 +234,8 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
    * Marshals a public key
    *
    * @param scratch the buffer to marshal the key to
-   * @param offset the location of the first byte of the marshalled key
-   * @return the length of the marshalled public key
+   * @param offset the location of the first byte of the marshaled key
+   * @return the length of the marshaled public key
    */
   @Override
   public short marshalPublic(byte[] scratch, short offset) {

@@ -42,20 +42,28 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
   // From SP 800-73-4 Part 2 3.3.2
   private static final byte CONST_POINT_UNCOMPRESSED = (byte) 0x04;
 
-  // Because the type of hash used is generally consistent for a particular card deployment
-  // we will allocate the particular signer we need lazily.
-  private static Signature sha1Signer;
-  private static Signature sha256Signer;
-
   // The ECC public key element tag
   public final byte ELEMENT_ECC_POINT = (byte) 0x86;
 
   // The ECC private key element tag
   public final byte ELEMENT_ECC_SECRET = (byte) 0x87;
 
+  private ECParams params = null;
+
   public PIVKeyObjectECC(
       byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
     super(id, modeContact, modeContactless, mechanism, role);
+
+    switch (getMechanism()) {
+      case PIV.ID_ALG_ECC_P256:
+        params = ECParamsP256.Instance();
+        break;
+      case PIV.ID_ALG_ECC_P384:
+        params = ECParamsP384.Instance();
+        break;
+      default:
+        ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+    }
   }
 
   /**
@@ -74,7 +82,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
    * @param element the element to update
    * @param buffer containing the updated element
    * @param offset first byte of the element in the buffer
-   * @param length the length og the element
+   * @param length the length of the element
    */
   @Override
   public void updateElement(byte element, byte[] buffer, short offset, short length) {
@@ -108,6 +116,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
         }
         allocatePublic(KeyBuilder.TYPE_EC_FP_PUBLIC, keyLen);
         ((ECPublicKey) publicKey).setW(buffer, offset, length);
+        setPublicParams();
         break;
 
       case ELEMENT_ECC_SECRET:
@@ -132,6 +141,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
         // ECC Private Key
         allocatePrivate(KeyBuilder.TYPE_EC_FP_PRIVATE, keyLen);
         ((ECPrivateKey) privateKey).setS(buffer, offset, length);
+        setPrivateParams();
         break;
 
         // Clear Key
@@ -182,7 +192,12 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
    */
   @Override
   public short keyAgreement(
-      byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
+      KeyAgreement csp,
+      byte[] inBuffer,
+      short inOffset,
+      short inLength,
+      byte[] outBuffer,
+      short outOffset) {
     switch (getMechanism()) {
       case PIV.ID_ALG_ECC_P256:
         if (CONST_MARSHALLED_PUB_KEY_LEN_P256 != inLength) {
@@ -198,60 +213,40 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
         ISOException.throwIt(ISO7816.SW_WRONG_DATA);
     }
 
-    // NOTE:  The assumption with the following code is that this method will only be called
-    // once per power/reset cycle of the card.  If that is not your use case move the call
-    // to init outside of the if block.
-    if (keyAgreement == null) {
-      keyAgreement = KeyAgreement.getInstance(KeyAgreement.ALG_EC_SVDP_DH_PLAIN, false);
-      keyAgreement.init(privateKey);
-    }
-    return keyAgreement.generateSecret(inBuffer, inOffset, inLength, outBuffer, outOffset);
+    csp.init(privateKey);
+    return csp.generateSecret(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
   /**
    * Signs the passed precomputed hash
    *
+   * @param csp the csp that does the signing.
    * @param inBuffer contains the precomputed hash
    * @param inOffset the location of the first byte of the hash
-   * @param inLength the length og the computed hash
+   * @param inLength the length of the computed hash
    * @param outBuffer the buffer to contain the signature
    * @param outOffset the location of the first byte of the signature
    * @return the length of the signature
    */
   @Override
   public short sign(
-      byte[] inBuffer, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
-
-    Signature signer = null;
-    // NOTE: The assumption with the following code is that this method will only be called
-    // once per power/reset cycle of the card.  If that is not your use case move the calls
-    // to init outside of their respective if blocks.
-    switch (inLength) {
-      case MessageDigest.LENGTH_SHA:
-        if (sha1Signer == null) {
-          sha1Signer = Signature.getInstance(Signature.ALG_ECDSA_SHA, false);
-        }
-        signer = sha1Signer;
-        break;
-      case MessageDigest.LENGTH_SHA_256:
-        if (sha256Signer == null) {
-          sha256Signer = Signature.getInstance(Signature.ALG_ECDSA_SHA_256, false);
-        }
-        signer = sha256Signer;
-        break;
-      default:
-        ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
-    }
-    signer.init(privateKey, Signature.MODE_SIGN);
-    return signer.signPreComputedHash(inBuffer, inOffset, inLength, outBuffer, outOffset);
+      Object csp,
+      byte[] inBuffer,
+      short inOffset,
+      short inLength,
+      byte[] outBuffer,
+      short outOffset) {
+    ((Signature) csp).init(privateKey, Signature.MODE_SIGN);
+    return ((Signature) csp)
+        .signPreComputedHash(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
   /**
-   * The public key marshalled per ANSI X9.62
+   * The public key marshaled per ANSI X9.62
    *
    * @param scratch the buffer to marshal the key to
    * @param offset the location of the first byte of the marshalled key
-   * @return the length of the marshalled public key
+   * @return the length of the marshaled public key
    */
   @Override
   public short marshalPublic(byte[] scratch, short offset) {
@@ -324,19 +319,30 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
   }
 
   /** Set ECC domain parameters. */
-  protected void setParams() {
-    ECParams params = null;
-    switch (getMechanism()) {
-      case PIV.ID_ALG_ECC_P256:
-        params = ECParamsP256.Instance();
-        break;
-      case PIV.ID_ALG_ECC_P384:
-        params = ECParamsP384.Instance();
-        break;
-      default:
-        ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-    }
+  private void setParams() {
+    setPrivateParams();
+    setPublicParams();
+  }
 
+  /** Set ECC domain parameters. */
+  private void setPrivateParams() {
+
+    byte[] a = params.getA();
+    byte[] b = params.getB();
+    byte[] g = params.getG();
+    byte[] p = params.getP();
+    byte[] r = params.getN();
+
+    ((ECPrivateKey) privateKey).setA(a, (short) 0, (short) (a.length));
+    ((ECPrivateKey) privateKey).setB(b, (short) 0, (short) (b.length));
+    ((ECPrivateKey) privateKey).setG(g, (short) 0, (short) (g.length));
+    ((ECPrivateKey) privateKey).setR(r, (short) 0, (short) (r.length));
+    ((ECPrivateKey) privateKey).setFieldFP(p, (short) 0, (short) (p.length));
+    ((ECPrivateKey) privateKey).setK(params.getH());
+  }
+
+  /** Set ECC domain parameters. */
+  protected void setPublicParams() {
     byte[] a = params.getA();
     byte[] b = params.getB();
     byte[] g = params.getG();
@@ -349,14 +355,5 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     ((ECPublicKey) publicKey).setR(r, (short) 0, (short) (r.length));
     ((ECPublicKey) publicKey).setFieldFP(p, (short) 0, (short) (p.length));
     ((ECPublicKey) publicKey).setK(params.getH());
-
-    // if you are using JCOP 3.0.5 the following code block can be replaced with
-    // ((ECPrivateKey) privateKey).copyDomainParametersFrom(((ECPublicKey) publicKey))
-    ((ECPrivateKey) privateKey).setA(a, (short) 0, (short) (a.length));
-    ((ECPrivateKey) privateKey).setB(b, (short) 0, (short) (b.length));
-    ((ECPrivateKey) privateKey).setG(g, (short) 0, (short) (g.length));
-    ((ECPrivateKey) privateKey).setR(r, (short) 0, (short) (r.length));
-    ((ECPrivateKey) privateKey).setFieldFP(p, (short) 0, (short) (p.length));
-    ((ECPrivateKey) privateKey).setK(params.getH());
   }
 }

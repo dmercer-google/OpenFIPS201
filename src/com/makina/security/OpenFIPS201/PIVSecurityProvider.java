@@ -27,7 +27,10 @@
 package com.makina.security.OpenFIPS201;
 
 import javacard.framework.*;
+import javacard.security.KeyAgreement;
+import javacard.security.MessageDigest;
 import javacard.security.RandomData;
+import javacard.security.Signature;
 import javacardx.crypto.Cipher;
 
 /**
@@ -51,10 +54,18 @@ public final class PIVSecurityProvider {
   public final OwnerPIN cardPIN; // 80 - Card Application PIN
   public final OwnerPIN cardPUK; // 81 - PIN Unlocking Key (PUK)
   public final CVMPIN globalPIN; // 00 - Global PIN
+
   // Cryptographic Service Providers
   private final Cipher cspAES;
   private final Cipher cspTDEA;
+  private final Cipher cspRSASigner;
+  private final KeyAgreement cspECDH;
   private final RandomData cspRNG;
+  private final Signature cspSHA1Signer;
+  private final Signature cspSHA256Signer;
+  private final Signature cspSHA384Signer;
+  private final Signature cspSHA512Signer;
+
   // Security Status Flags
   private final boolean[] securityFlags;
   // Key objects
@@ -65,7 +76,13 @@ public final class PIVSecurityProvider {
     // Create our CSPs
     cspAES = Cipher.getInstance(Cipher.ALG_AES_BLOCK_128_ECB_NOPAD, false);
     cspTDEA = Cipher.getInstance(Cipher.ALG_DES_ECB_NOPAD, false);
+    cspECDH = KeyAgreement.getInstance(KeyAgreement.ALG_EC_SVDP_DH_PLAIN, false);
+    cspRSASigner = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
     cspRNG = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
+    cspSHA1Signer = Signature.getInstance(Signature.ALG_ECDSA_SHA, false);
+    cspSHA256Signer = Signature.getInstance(Signature.ALG_ECDSA_SHA_256, false);
+    cspSHA384Signer = Signature.getInstance(Signature.ALG_ECDSA_SHA_384, false);
+    cspSHA512Signer = Signature.getInstance(Signature.ALG_ECDSA_SHA_512, false);
 
     // Create our security flags
     securityFlags = JCSystem.makeTransientBooleanArray(LENGTH_FLAGS, JCSystem.CLEAR_ON_DESELECT);
@@ -369,10 +386,48 @@ public final class PIVSecurityProvider {
       byte[] outBuffer,
       short outOffset) {
 
-    if (!(key instanceof PIVKeyObjectPKI)) {
+    if (!(key.isAsymmetric())) {
       ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
     }
-    return ((PIVKeyObjectPKI) key).sign(inBuffer, inOffset, inLength, outBuffer, outOffset);
+
+    Object signer = null;
+    if (key instanceof PIVKeyObjectRSA) {
+      signer = cspRSASigner;
+    } else {
+      switch (inLength) {
+        case MessageDigest.LENGTH_SHA:
+          signer = cspSHA1Signer;
+          break;
+        case MessageDigest.LENGTH_SHA_256:
+          signer = cspSHA256Signer;
+          break;
+        case MessageDigest.LENGTH_SHA_384:
+          signer = cspSHA384Signer;
+          break;
+        case MessageDigest.LENGTH_SHA_512:
+          signer = cspSHA512Signer;
+          break;
+        default:
+          ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+      }
+    }
+    return ((PIVKeyObjectPKI) key).sign(signer, inBuffer, inOffset, inLength, outBuffer, outOffset);
+  }
+
+  public short keyAgreement(
+      PIVKeyObject key,
+      byte[] inBuffer,
+      short inOffset,
+      short inLength,
+      byte[] outBuffer,
+      short outOffset) {
+
+    if (!(key.isAsymmetric())) {
+      ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
+    }
+
+    return ((PIVKeyObjectPKI) key)
+        .keyAgreement(cspECDH, inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
   /**
