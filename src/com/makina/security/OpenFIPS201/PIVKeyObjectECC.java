@@ -276,14 +276,14 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
   }
 
   /**
-   * ECC Keys don't have a block length
+   * ECC Keys don't have a block length but we conform to
+   * SP 800-73-4 Part 2 Para 4.1.4 and return the key length
    *
-   * @throws ISOException reason = SW_FUNC_NOT_SUPPORTED
+   * @return the block length equal to the key length
    */
   @Override
   public short getBlockLength() {
-    ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
-    return 0;
+    return getKeyLength();
   }
 
   /**

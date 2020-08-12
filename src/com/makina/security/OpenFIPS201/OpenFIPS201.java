@@ -153,7 +153,6 @@ public final class OpenFIPS201 extends Applet {
           }
           processGP_SECURECHANNEL(apdu);
           break;
-
         default:
           ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
       }
@@ -182,8 +181,9 @@ public final class OpenFIPS201 extends Applet {
     // - If there is an outstanding chain request to process, this method will throw an ISOException
     //	 (including SW_NO_ERROR) and no further processing will occur.
     // - It is important that this command is handled before any GP SCP authentication is called to
-    //   prevent a downgrade attack where the attacker waits for a sensitive large-command to be executed
-    //   and then intercepts the session and cancels the secure channel (thus removing session encryption).
+    //   prevent a downgrade attack where the attacker waits for a sensitive large-command to be
+    //   executed and then intercepts the session and cancels the secure channel (thus removing
+    //   session encryption).
 
     // We pass the byte array, offset and length here because the previous call to unwrap() may have
     // altered the length
@@ -424,7 +424,7 @@ public final class OpenFIPS201 extends Applet {
       return;
     }
 
-      // CASE 2 - If P1='FF', and Lc and the command data field are absent, the command shall reset
+    // CASE 2 - If P1='FF', and Lc and the command data field are absent, the command shall reset
     // 			the security status of the key reference in P2.
     if (buffer[ISO7816.OFFSET_P1] == CONST_P1_RESET && length == ZERO_SHORT) {
       // Reset the authentication status using the key reference supplied in P2
@@ -432,17 +432,16 @@ public final class OpenFIPS201 extends Applet {
       return;
     }
 
-      // CASE 3 - If P1='00', and Lc and the command data field are present, then the authentication
-    // data
-    //			in the command data field shall be compared against the reference data associated with
-    //			the key reference [...]
+    // CASE 3 - If P1='00', and Lc and the command data field are present, then the authentication
+    //          data in the command data field shall be compared against the reference data
+    //          associated with the key reference [...]
     if (buffer[ISO7816.OFFSET_P1] == CONST_P1_AUTH && length != ZERO_SHORT) {
       // Verify using the key reference supplied in P2
       piv.verify(buffer[ISO7816.OFFSET_P2], buffer, ISO7816.OFFSET_CDATA, length);
       return;
     }
 
-      // If we reached here, then none of the cases applied
+    // If we reached here, then none of the cases applied
     ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
   }
 
