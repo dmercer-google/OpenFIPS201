@@ -112,26 +112,32 @@ final class ECParamsP256 extends ECParams {
     return instance;
   }
 
+  @Override
   protected byte[] getA() {
     return a;
   }
 
+  @Override
   protected byte[] getB() {
     return b;
   }
 
+  @Override
   protected byte[] getG() {
     return G;
   }
 
+  @Override
   protected byte[] getP() {
     return p;
   }
 
+  @Override
   protected byte[] getN() {
     return n;
   }
 
+  @Override
   protected short getH() {
     return h;
   }

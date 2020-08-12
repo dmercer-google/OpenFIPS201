@@ -972,7 +972,7 @@ public final class PIV {
       ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
     }
 
-    // PRE-CONDITION 3 - The key's value must have been set
+    // PRE-CONDITION 3 - The key's private or secret values must have been set
     if (!key.isInitialised()) {
       PIVSecurityProvider.zeroise(scratch, (short) 0, LENGTH_SCRATCH);
       ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
@@ -1494,10 +1494,8 @@ public final class PIV {
 
     // STEP 1 - Generate the key pair
     PIVKeyObjectPKI keyPair = (PIVKeyObjectPKI) key;
-    keyPair.generate();
+    short length = keyPair.generate(scratch, (short) 0);
 
-    // STEP 2 - Prepare the outgoing public key
-    short length = keyPair.marshalPublic(scratch, (short) 0);
     chainBuffer.setOutgoing(scratch, (short) 0, length, true);
 
     // Done, return the length of the object we are writing back

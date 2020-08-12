@@ -111,13 +111,9 @@ public abstract class PIVObject {
     }
   }
 
-  /**
-   * Returns true if the current object is initialised with it's intended value
-   *
-   * @return True if the current object is initialised
-   */
-  public abstract boolean isInitialised();
-
   /** Clears the current object's value */
   public abstract void clear();
+
+  /** @return returns true if the object has been initialized */
+  public abstract boolean isInitialised();
 }

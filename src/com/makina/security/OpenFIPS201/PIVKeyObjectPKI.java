@@ -26,17 +26,21 @@
 
 package com.makina.security.OpenFIPS201;
 
+import javacard.framework.CardRuntimeException;
 import javacard.security.*;
 
 public abstract class PIVKeyObjectPKI extends PIVKeyObject {
-  public static final byte ELEMENT_CLEAR = (byte) 0xFF;
-  public final short CONST_TAG_RESPONSE = (short) 0x7F49;
+  protected static final byte ELEMENT_CLEAR = (byte) 0xFF;
+  protected static final short CONST_TAG_RESPONSE = (short) 0x7F49;
+  protected final TLVWriter pubKeyWriter;
+
   protected PrivateKey privateKey;
   protected PublicKey publicKey;
 
   protected PIVKeyObjectPKI(
       byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
     super(id, modeContact, modeContactless, mechanism, role);
+    pubKeyWriter = new TLVWriter();
   }
 
   /** @return true */
@@ -57,8 +61,54 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
     clearPublic();
   }
 
+  /** @return true if the privateKey exists and is initialized. */
+  @Override
+  public boolean isInitialised() {
+    return (privateKey != null && privateKey.isInitialized());
+  }
+
+  /**
+   * Generates a new random keypair.
+   *
+   * <p>Note: If the card does not support Object deletion, repeatedly calling this method may
+   * exhaust NV RAM.
+   *
+   * @throws Exception
+   */
+  public short generate(byte[] scratch, short offset) {
+    KeyPair keyPair;
+    short length = 0;
+    try {
+      clear();
+      allocatePrivate();
+      allocatePublic();
+      // Normally we only "new" objects in a constructor but in this case
+      // we cannot new the generator until the privateKey and publicKey
+      // objects exist which happens in allocate which is called outside the
+      // context of any constructor.
+      // keyPair = new KeyPair(publicKey, privateKey);
+      keyPair = new KeyPair(publicKey, privateKey);
+      keyPair.genKeyPair();
+
+      length = marshalPublic(keyPair.getPublic(), scratch, offset);
+    } catch (CardRuntimeException cre) {
+      // At this point we are in a nondeterministic state so we will
+      // clear both the public and private keys if they exist
+      clear();
+      CardRuntimeException.throwIt(cre.getReason());
+    } finally {
+      // We effectively new'd these objects so we will make sure the memory
+      // is freed up.
+      keyPair = null;
+      // Any existing public key is now invalid
+      clearPublic();
+      runGc();
+    }
+    return length;
+  }
+
   /** Clears and dereferences the private key */
-  private void clearPrivate() {
+  protected void clearPrivate() {
     if (privateKey != null) {
       privateKey.clearKey();
       privateKey = null;
@@ -67,81 +117,12 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
   }
 
   /** Clears the public key */
-  private void clearPublic() {
+  protected void clearPublic() {
     if (publicKey != null) {
       publicKey.clearKey();
-    }
-  }
-
-  /** @return true if both the publicKey and privateKey exist and are initialized. */
-  @Override
-  public boolean isInitialised() {
-    return (privateKey != null
-        && privateKey.isInitialized()
-        && publicKey != null
-        && publicKey.isInitialized());
-  }
-
-  /**
-   * Clears any existing keys and allocates new public and private key objects. The publicKey object
-   * is reused if it exists and is of the same type and length as that being requested. Otherwise it
-   * is cleared and recreated.
-   *
-   * <p>Note: If the card does not support Object deletion, repeatedly calling this method may
-   * exhaust NV RAM.
-   *
-   * @param publicKeyType the type of public key to generate from KeyBuilder.Type_ ...
-   * @param privateKeyType the type of private key to generate from KeyBuilder.Type_ ...
-   * @param keyLength the length of key to generate in bits from KeyBuilder.LENGTH_ ...
-   */
-  protected void allocate(byte publicKeyType, byte privateKeyType, short keyLength) {
-    allocatePrivate(privateKeyType, keyLength);
-    allocatePublic(publicKeyType, keyLength);
-  }
-
-  /**
-   * Clears and reallocates a private key.
-   *
-   * @param privateKeyType the type of private key to generate from KeyBuilder.Type_ ...
-   * @param keyLength the length of key to generate in bits from KeyBuilder.LENGTH_ ...
-   */
-  protected void allocatePrivate(byte privateKeyType, short keyLength) {
-    clearPrivate();
-    privateKey = (PrivateKey) KeyBuilder.buildKey(privateKeyType, keyLength, false);
-  }
-
-  /**
-   * Clears and if necessary reallocates a public key.
-   *
-   * @param publicKeyType the type of private key to generate from KeyBuilder.Type_ ...
-   * @param keyLength the length of key to generate in bits from KeyBuilder.LENGTH_ ...
-   */
-  protected void allocatePublic(byte publicKeyType, short keyLength) {
-    clearPublic();
-    if (publicKey == null) {
-      publicKey = (PublicKey) KeyBuilder.buildKey(publicKeyType, keyLength, false);
-    } else if (publicKey.getSize() != keyLength || publicKey.getType() != publicKeyType) {
       publicKey = null;
       runGc();
-      publicKey = (PublicKey) KeyBuilder.buildKey(publicKeyType, keyLength, false);
     }
-  }
-
-  /**
-   * Generates a new random keypair.
-   *
-   * <p>Note: If the card does not support Object deletion, repeatedly calling this method may
-   * exhaust NV RAM.
-   */
-  public void generate() {
-    allocate();
-
-    // Normally we only "new" objects in a constructor but in this case
-    // we cannot new the generator until the privateKey and publicKey
-    // objects exist which happens in allocate which is called outside the
-    // context of any constructor.
-    new KeyPair(publicKey, privateKey).genKeyPair();
-    runGc();
   }
 
   /**
@@ -185,9 +166,16 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
   /**
    * Marshals a public key
    *
+   * @param pubKey the publicKey to marshal
    * @param scratch the buffer to marshal the key to
    * @param offset the location of the first byte of the marshalled key
    * @return the length of the marshalled public key
    */
-  public abstract short marshalPublic(byte[] scratch, short offset);
+  protected abstract short marshalPublic(PublicKey pubKey, byte[] scratch, short offset);
+
+  /** Clears and reallocates a private key. */
+  protected abstract void allocatePrivate();
+
+  /** Clears and if necessary reallocates a public key. */
+  protected abstract void allocatePublic();
 }
