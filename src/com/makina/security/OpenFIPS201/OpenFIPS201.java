@@ -30,6 +30,8 @@ import javacard.framework.APDU;
 import javacard.framework.Applet;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
+import javacard.framework.JCSystem;
+
 import org.globalplatform.GPSystem;
 import org.globalplatform.SecureChannel;
 
@@ -70,10 +72,15 @@ public final class OpenFIPS201 extends Applet {
   //
   // Persistent state definitions
   //
-  private final ChainBuffer chainBuffer;
-  private SecureChannel secureChannel;
+  private static boolean objectDeletionSupported;
 
-  public OpenFIPS201() {
+  private final ChainBuffer chainBuffer;
+
+  private SecureChannel secureChannel;
+  private static boolean gcRequested = false;
+  
+  private OpenFIPS201() {
+	objectDeletionSupported = JCSystem.isObjectDeletionSupported();
 
     // Create our chain buffer handler
     chainBuffer = new ChainBuffer();
@@ -115,124 +122,134 @@ public final class OpenFIPS201 extends Applet {
   }
 
   public void process(APDU apdu) {
-    if (selectingApplet()) {
-      processPIV_SELECT(apdu);
-      return;
-    }
-
-    // Get a reference to the GlobalPlatform SecureChannel (not allowed to do this
-    // in the constructor)
-    if (secureChannel == null) {
-      secureChannel = GPSystem.getSecureChannel();
-    }
-
-    //
-    // Handle incoming APDUs
-    //
-    // Process any commands that are wrapped by a GlobalPlatform Secure Channel
-    final byte media = (byte) (APDU.getProtocol() & APDU.PROTOCOL_MEDIA_MASK);
-
-    final boolean contactless =
-        (media == APDU.PROTOCOL_MEDIA_CONTACTLESS_TYPE_A
-            || media == APDU.PROTOCOL_MEDIA_CONTACTLESS_TYPE_B);
-
-    final byte[] buffer = apdu.getBuffer();
-
-    // We pass the APDU here because this will send data on our behalf
-    chainBuffer.processOutgoing(apdu);
-
-    // Validate the CLA
-    if (!apdu.isISOInterindustryCLA()) {
-      switch (buffer[ISO7816.OFFSET_INS]) {
-        case INS_GP_INITIALIZE_UPDATE:
-          secureChannel.resetSecurity();
-          // Intentional fall through
-        case INS_GP_EXTERNAL_AUTHENTICATE:
-          if (Config.FEATURE_RESTRICT_SCP_TO_CONTACT && contactless) {
-            ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
-          }
-          processGP_SECURECHANNEL(apdu);
-          break;
-        default:
-          ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
-      }
-      return;
-    }
-
-    short length = apdu.setIncomingAndReceive();
-    boolean isSecureChannel;
-    if ((secureChannel.getSecurityLevel() & SC_MASK) == SC_MASK) {
-
-      // Update the APDU, including the header bytes
-      length = secureChannel.unwrap(buffer, (short) 0, (short) (ISO7816.OFFSET_CDATA + length));
-      length -= ISO7816.OFFSET_CDATA; // Remove the header length
-
-      isSecureChannel = true;
-    } else {
-      isSecureChannel = false;
-    }
-
-    // Notify PIV of any updated applet security conditions
-    piv.updateSecurityStatus(contactless, isSecureChannel);
-
-    //
-    // Process any outstanding chain requests
-    // NOTES:
-    // - If there is an outstanding chain request to process, this method will throw an ISOException
-    //	 (including SW_NO_ERROR) and no further processing will occur.
-    // - It is important that this command is handled before any GP SCP authentication is called to
-    //   prevent a downgrade attack where the attacker waits for a sensitive large-command to be
-    //   executed and then intercepts the session and cancels the secure channel (thus removing
-    //   session encryption).
-
-    // We pass the byte array, offset and length here because the previous call to unwrap() may have
-    // altered the length
-    chainBuffer.processIncomingObject(buffer, apdu.getOffsetCdata(), length);
-
-    //
-    // Normal APDU processing
-    //
-
-    // Call the appropriate process method based on the INS
-    switch (buffer[ISO7816.OFFSET_INS]) {
-      case INS_GET_RESPONSE:
-        chainBuffer.processOutgoing(apdu);
-        break;
-
-      case INS_PIV_SELECT:
+    try {
+      if (selectingApplet()) {
         processPIV_SELECT(apdu);
-        break;
+        return;
+      }
 
-      case INS_PIV_GET_DATA:
-        processPIV_GET_DATA(apdu);
-        break;
+      // Get a reference to the GlobalPlatform SecureChannel (not allowed to do this
+      // in the constructor)
+      if (secureChannel == null) {
+        secureChannel = GPSystem.getSecureChannel();
+      }
 
-      case INS_PIV_VERIFY:
-        processPIV_VERIFY(apdu);
-        break;
+      //
+      // Handle incoming APDUs
+      //
+      // Process any commands that are wrapped by a GlobalPlatform Secure Channel
+      final byte media = (byte) (APDU.getProtocol() & APDU.PROTOCOL_MEDIA_MASK);
 
-      case INS_PIV_CHANGE_REFERENCE_DATA:
-        processPIV_CHANGE_REFERENCE_DATA(apdu);
-        break;
+      final boolean contactless =
+          (media == APDU.PROTOCOL_MEDIA_CONTACTLESS_TYPE_A
+              || media == APDU.PROTOCOL_MEDIA_CONTACTLESS_TYPE_B);
 
-      case INS_PIV_RESET_RETRY_COUNTER:
-        processPIV_RESET_RETRY_COUNTER(apdu);
-        break;
+      final byte[] buffer = apdu.getBuffer();
 
-      case INS_PIV_GENERAL_AUTHENTICATE:
-        processPIV_GENERAL_AUTHENTICATE(apdu);
-        break;
+      // We pass the APDU here because this will send data on our behalf
+      chainBuffer.processOutgoing(apdu);
 
-      case INS_PIV_PUT_DATA:
-        processPIV_PUT_DATA(apdu);
-        break;
+      // Validate the CLA
+      if (!apdu.isISOInterindustryCLA()) {
+        switch (buffer[ISO7816.OFFSET_INS]) {
+          case INS_GP_INITIALIZE_UPDATE:
+            secureChannel.resetSecurity();
+            // Intentional fall through
+          case INS_GP_EXTERNAL_AUTHENTICATE:
+            if (Config.FEATURE_RESTRICT_SCP_TO_CONTACT && contactless) {
+              ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+            }
+            processGP_SECURECHANNEL(apdu);
+            break;
+          default:
+            ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
+        }
+        return;
+      }
 
-      case INS_PIV_GENERATE_ASSYMETRIC_KEYPAIR:
-        processPIV_GENERATE_ASSYMETRIC_KEYPAIR(apdu);
-        break;
+      short length = apdu.setIncomingAndReceive();
+      boolean isSecureChannel;
+      if ((secureChannel.getSecurityLevel() & SC_MASK) == SC_MASK) {
 
-      default:
-        ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
+        // Update the APDU, including the header bytes
+        length = secureChannel.unwrap(buffer, (short) 0, (short) (ISO7816.OFFSET_CDATA + length));
+        length -= ISO7816.OFFSET_CDATA; // Remove the header length
+
+        isSecureChannel = true;
+      } else {
+        isSecureChannel = false;
+      }
+
+      // Notify PIV of any updated applet security conditions
+      piv.updateSecurityStatus(contactless, isSecureChannel);
+
+      //
+      // Process any outstanding chain requests
+      // NOTES:
+      // - If there is an outstanding chain request to process, this method will throw an
+      // ISOException
+      //	 (including SW_NO_ERROR) and no further processing will occur.
+      // - It is important that this command is handled before any GP SCP authentication is called
+      // to
+      //   prevent a downgrade attack where the attacker waits for a sensitive large-command to be
+      //   executed and then intercepts the session and cancels the secure channel (thus removing
+      //   session encryption).
+
+      // We pass the byte array, offset and length here because the previous call to unwrap() may
+      // have
+      // altered the length
+      chainBuffer.processIncomingObject(buffer, apdu.getOffsetCdata(), length);
+
+      //
+      // Normal APDU processing
+      //
+
+      // Call the appropriate process method based on the INS
+      switch (buffer[ISO7816.OFFSET_INS]) {
+        case INS_GET_RESPONSE:
+          chainBuffer.processOutgoing(apdu);
+          break;
+
+        case INS_PIV_SELECT:
+          processPIV_SELECT(apdu);
+          break;
+
+        case INS_PIV_GET_DATA:
+          processPIV_GET_DATA(apdu);
+          break;
+
+        case INS_PIV_VERIFY:
+          processPIV_VERIFY(apdu);
+          break;
+
+        case INS_PIV_CHANGE_REFERENCE_DATA:
+          processPIV_CHANGE_REFERENCE_DATA(apdu);
+          break;
+
+        case INS_PIV_RESET_RETRY_COUNTER:
+          processPIV_RESET_RETRY_COUNTER(apdu);
+          break;
+
+        case INS_PIV_GENERAL_AUTHENTICATE:
+          processPIV_GENERAL_AUTHENTICATE(apdu);
+          break;
+
+        case INS_PIV_PUT_DATA:
+          processPIV_PUT_DATA(apdu);
+          break;
+
+        case INS_PIV_GENERATE_ASSYMETRIC_KEYPAIR:
+          processPIV_GENERATE_ASSYMETRIC_KEYPAIR(apdu);
+          break;
+
+        default:
+          ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
+      }
+    } finally {
+      if (gcRequested && objectDeletionSupported) {
+        gcRequested = false;
+        JCSystem.requestObjectDeletion();
+      }
     }
   }
 
@@ -307,7 +324,6 @@ public final class OpenFIPS201 extends Applet {
     final byte P2 = (byte) 0xFF;
 
     byte[] buffer = apdu.getBuffer();
-    short length = (short) (buffer[ISO7816.OFFSET_LC] & 0xFF);
 
     /*
      * PRE-CONDITIONS
@@ -391,8 +407,6 @@ public final class OpenFIPS201 extends Applet {
 
     final byte CONST_P1_AUTH = (byte) 0x00;
     final byte CONST_P1_RESET = (byte) 0xFF;
-    final byte CONST_P2 = (byte) 0xFF;
-    final byte CONST_LC = (byte) 0x08;
 
     byte[] buffer = apdu.getBuffer();
     short length = (short) (buffer[ISO7816.OFFSET_LC] & 0xFF);
@@ -580,7 +594,6 @@ public final class OpenFIPS201 extends Applet {
     final byte CONST_P1 = (byte) 0x00;
 
     byte[] buffer = apdu.getBuffer();
-    short length = (short) (buffer[ISO7816.OFFSET_LC] & 0xFF);
 
     /*
      * PRE-CONDITIONS
@@ -603,5 +616,12 @@ public final class OpenFIPS201 extends Applet {
 
     // STEP 2 - Process the first frame of the chainBuffer for this response
     chainBuffer.processOutgoing(apdu);
+  }
+  
+  /**
+   * Records that a method wants object deletion to run if it is available.
+   */
+  public static void requestGc() {
+	  gcRequested = true;
   }
 }
