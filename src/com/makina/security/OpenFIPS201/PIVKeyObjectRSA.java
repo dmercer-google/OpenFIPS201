@@ -31,7 +31,7 @@ import javacard.framework.ISOException;
 import javacard.security.*;
 import javacardx.crypto.Cipher;
 
-public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
+final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
 
   // RSA Modulus Element
   private static final byte ELEMENT_RSA_N = (byte) 0x81;
@@ -131,7 +131,7 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
    * @param offset The starting offset to write to
    * @param length The length of the exponent to write
    */
-  public void setPublicExponent(byte[] buffer, short offset, short length) {
+  private void setPublicExponent(byte[] buffer, short offset, short length) {
     if (publicKey == null) allocatePublic();
     ((RSAPublicKey) publicKey).setExponent(buffer, offset, length);
   }
@@ -143,7 +143,7 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
    * @param offset The starting offset to write to
    * @param length The length of the modulus to write
    */
-  public void setModulus(byte[] buffer, short offset, short length) {
+  private void setModulus(byte[] buffer, short offset, short length) {
     if (length != getKeyLengthBytes()) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
 
     if (privateKey == null) allocatePrivate();
@@ -203,7 +203,7 @@ public final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
    * @return the length of the marshaled public key
    */
   @Override
-  public short marshalPublic(PublicKey pubKey, byte[] scratch, short offset) {
+  protected short marshalPublic(PublicKey pubKey, byte[] scratch, short offset) {
     pubKeyWriter.reset();
     // Adding 12 to the key length to account for other overhead
     pubKeyWriter.init(scratch, offset, (short) (getKeyLengthBytes() * 2 + 12), CONST_TAG_RESPONSE);

@@ -33,9 +33,9 @@ import org.globalplatform.CVM;
 import org.globalplatform.GPSystem;
 
 /** Provides an OwnerPIN proxy to the CVM class to allow uniform handling */
-public final class CVMPIN extends OwnerPIN implements PIN {
+final class CVMPIN extends OwnerPIN implements PIN {
 
-  final CVM cvm;
+  private final CVM cvm;
 
   /**
    * Constructor
@@ -55,27 +55,33 @@ public final class CVMPIN extends OwnerPIN implements PIN {
     if (Config.FEATURE_PIN_GLOBAL_CHANGE) cvm.setTryLimit(tryLimit);
   }
 
+  @Override
   public byte getTriesRemaining() {
     return cvm.getTriesRemaining();
   }
 
+  @Override
   public boolean check(byte[] pin, short offset, byte length)
       throws ArrayIndexOutOfBoundsException, NullPointerException {
     return (CVM.CVM_SUCCESS == cvm.verify(pin, offset, length, CVM.FORMAT_HEX));
   }
 
+  @Override
   public boolean isValidated() {
     return cvm.isVerified();
   }
 
+  @Override
   public void reset() {
     cvm.resetState();
   }
 
+  @Override
   public void update(byte[] pin, short offset, byte length) throws PINException {
     cvm.update(pin, offset, length, CVM.FORMAT_HEX);
   }
 
+  @Override
   public void resetAndUnblock() {
     cvm.resetAndUnblockState();
   }

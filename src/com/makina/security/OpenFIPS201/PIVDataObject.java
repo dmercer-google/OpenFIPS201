@@ -32,7 +32,7 @@ import javacard.framework.JCSystem;
 import javacard.framework.Util;
 
 /** Provides functionality for PIV data objects */
-public final class PIVDataObject extends PIVObject {
+final class PIVDataObject extends PIVObject {
   // Note:  Do NOT use content.length to determine the number of bytes in the content array
   // rather use getLength().
   public byte[] content;

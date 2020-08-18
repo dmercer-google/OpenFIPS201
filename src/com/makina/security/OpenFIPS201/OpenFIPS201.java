@@ -31,7 +31,6 @@ import javacard.framework.Applet;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
-
 import org.globalplatform.GPSystem;
 import org.globalplatform.SecureChannel;
 
@@ -78,9 +77,9 @@ public final class OpenFIPS201 extends Applet {
 
   private SecureChannel secureChannel;
   private static boolean gcRequested = false;
-  
+
   private OpenFIPS201() {
-	objectDeletionSupported = JCSystem.isObjectDeletionSupported();
+    objectDeletionSupported = JCSystem.isObjectDeletionSupported();
 
     // Create our chain buffer handler
     chainBuffer = new ChainBuffer();
@@ -93,6 +92,7 @@ public final class OpenFIPS201 extends Applet {
     new OpenFIPS201().register(bArray, (short) (bOffset + 1), bArray[bOffset]);
   }
 
+  @Override
   public void deselect() {
 
     // Reset any security domain session (see resetSecurity() documentation)
@@ -121,6 +121,7 @@ public final class OpenFIPS201 extends Applet {
     }
   }
 
+  @Override
   public void process(APDU apdu) {
     try {
       if (selectingApplet()) {
@@ -519,7 +520,7 @@ public final class OpenFIPS201 extends Applet {
       piv.changeReferenceData(buffer[ISO7816.OFFSET_P2], buffer, ISO7816.OFFSET_CDATA, length);
     } else {
       // CASE 2 - Otherwise, we pass it to the administrative command handler
-      piv.changeReferenceDataAdmin(buffer[ISO7816.OFFSET_P2], buffer, ISO7816.OFFSET_CDATA, length);
+      piv.changeReferenceDataAdmin(buffer, ISO7816.OFFSET_CDATA, length);
     }
   }
 
@@ -554,7 +555,7 @@ public final class OpenFIPS201 extends Applet {
      * EXECUTION STEPS
      */
 
-    piv.resetRetryCounter(buffer[ISO7816.OFFSET_P2], buffer, ISO7816.OFFSET_CDATA, length);
+    piv.resetRetryCounter(buffer[ISO7816.OFFSET_P2], buffer, ISO7816.OFFSET_CDATA);
   }
 
   /**
@@ -617,11 +618,9 @@ public final class OpenFIPS201 extends Applet {
     // STEP 2 - Process the first frame of the chainBuffer for this response
     chainBuffer.processOutgoing(apdu);
   }
-  
-  /**
-   * Records that a method wants object deletion to run if it is available.
-   */
+
+  /** Records that a method wants object deletion to run if it is available. */
   public static void requestGc() {
-	  gcRequested = true;
+    gcRequested = true;
   }
 }

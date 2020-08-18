@@ -35,12 +35,14 @@ import javacard.security.SecretKey;
 import javacardx.crypto.Cipher;
 
 /** Provides functionality for symmetric PIV key objects */
-public final class PIVKeyObjectSYM extends PIVKeyObject {
+final class PIVKeyObjectSYM extends PIVKeyObject {
 
   // The only element that can be updated in a symmetric key
-  public static final byte ELEMENT_KEY = (byte) 0x80;
+  private static final byte ELEMENT_KEY = (byte) 0x80;
+
   // Clear any key material from this object
-  public static final byte ELEMENT_KEY_CLEAR = (byte) 0xFF;
+  private static final byte ELEMENT_KEY_CLEAR = (byte) 0xFF;
+
   private SecretKey key;
 
   public PIVKeyObjectSYM(
@@ -95,7 +97,7 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
     PIVSecurityProvider.zeroise(buffer, offset, keyLengthBytes);
   }
 
-  protected void allocate() {
+  protected final void allocate() {
 
     clear();
     switch (header[HEADER_MECHANISM]) {
@@ -136,6 +138,7 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
     }
   }
 
+  @Override
   public boolean isInitialised() {
     return (key != null && key.isInitialized());
   }
@@ -164,7 +167,7 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
   }
 
   @Override
-  public short getKeyLengthBits() {
+  protected short getKeyLengthBits() {
     switch (getMechanism()) {
       case PIV.ID_ALG_DEFAULT:
       case PIV.ID_ALG_TDEA_3KEY:
@@ -196,17 +199,6 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
       ISOException.throwIt(ISO7816.SW_WRONG_DATA);
     }
     cipher.init(key, Cipher.MODE_ENCRYPT);
-    return cipher.doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
-  }
-
-  public short decrypt(
-      Cipher cipher,
-      byte[] inBuffer,
-      short inOffset,
-      short inLength,
-      byte[] outBuffer,
-      short outOffset) {
-    cipher.init(key, Cipher.MODE_DECRYPT);
     return cipher.doFinal(inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 }

@@ -29,7 +29,7 @@ package com.makina.security.OpenFIPS201;
 import javacard.framework.CardRuntimeException;
 import javacard.security.*;
 
-public abstract class PIVKeyObjectPKI extends PIVKeyObject {
+abstract class PIVKeyObjectPKI extends PIVKeyObject {
   protected static final byte ELEMENT_CLEAR = (byte) 0xFF;
   protected static final short CONST_TAG_RESPONSE = (short) 0x7F49;
   protected final TLVWriter pubKeyWriter;
@@ -45,7 +45,7 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
 
   /** @return true */
   @Override
-  public boolean isAsymmetric() {
+  public final boolean isAsymmetric() {
     return true;
   }
 
@@ -56,14 +56,14 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
    * exhaust NV RAM.
    */
   @Override
-  public void clear() {
+  public final void clear() {
     clearPrivate();
     clearPublic();
   }
 
   /** @return true if the privateKey exists and is initialized. */
   @Override
-  public boolean isInitialised() {
+  public final boolean isInitialised() {
     return (privateKey != null && privateKey.isInitialized());
   }
 
@@ -72,10 +72,8 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
    *
    * <p>Note: If the card does not support Object deletion, repeatedly calling this method may
    * exhaust NV RAM.
-   *
-   * @throws Exception
    */
-  public short generate(byte[] scratch, short offset) {
+  public final short generate(byte[] scratch, short offset) {
     KeyPair keyPair;
     short length = 0;
     try {
@@ -108,7 +106,7 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
   }
 
   /** Clears and dereferences the private key */
-  protected void clearPrivate() {
+  protected final void clearPrivate() {
     if (privateKey != null) {
       privateKey.clearKey();
       privateKey = null;
@@ -117,7 +115,7 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
   }
 
   /** Clears the public key */
-  protected void clearPublic() {
+  protected final void clearPublic() {
     if (publicKey != null) {
       publicKey.clearKey();
       publicKey = null;

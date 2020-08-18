@@ -31,7 +31,7 @@ import javacard.framework.ISOException;
 import javacard.security.*;
 
 /** Provides functionality for ECC PIV key objects */
-public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
+final class PIVKeyObjectECC extends PIVKeyObjectPKI {
   private static final byte CONST_POINT_UNCOMPRESSED = (byte) 0x04;
 
   // The ECC public key element tag
@@ -178,7 +178,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
    * @return the length of the marshaled public key
    */
   @Override
-  public short marshalPublic(PublicKey pubKey, byte[] scratch, short offset) {
+  protected short marshalPublic(PublicKey pubKey, byte[] scratch, short offset) {
     pubKeyWriter.reset();
     // adding 5 bytes to the marshaled key to account for other APDU overhead.
     pubKeyWriter.init(scratch, offset, (short) (marshaledPubKeyLen + 5), CONST_TAG_RESPONSE);
@@ -228,7 +228,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     clearPrivate();
     privateKey =
         (PrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_EC_FP_PRIVATE, getKeyLengthBits(), false);
-    setPrivateParams();
+    setParams((ECKey) privateKey);
   }
 
   /** Clears and if necessary reallocates a public key. */
@@ -237,39 +237,26 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
     clearPublic();
     publicKey =
         (PublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_EC_FP_PUBLIC, getKeyLengthBits(), false);
-    setPublicParams();
+    setParams((ECKey) publicKey);
   }
 
-  /** Set ECC domain parameters. */
-  private void setPrivateParams() {
-
+  /**
+   * Set ECC domain parameters.
+   *
+   * @param key
+   */
+  private void setParams(ECKey key) {
     byte[] a = params.getA();
     byte[] b = params.getB();
     byte[] g = params.getG();
     byte[] p = params.getP();
     byte[] r = params.getN();
 
-    ((ECPrivateKey) privateKey).setA(a, (short) 0, (short) (a.length));
-    ((ECPrivateKey) privateKey).setB(b, (short) 0, (short) (b.length));
-    ((ECPrivateKey) privateKey).setG(g, (short) 0, (short) (g.length));
-    ((ECPrivateKey) privateKey).setR(r, (short) 0, (short) (r.length));
-    ((ECPrivateKey) privateKey).setFieldFP(p, (short) 0, (short) (p.length));
-    ((ECPrivateKey) privateKey).setK(params.getH());
-  }
-
-  /** Set ECC domain parameters. */
-  protected void setPublicParams() {
-    byte[] a = params.getA();
-    byte[] b = params.getB();
-    byte[] g = params.getG();
-    byte[] p = params.getP();
-    byte[] r = params.getN();
-
-    ((ECPublicKey) publicKey).setA(a, (short) 0, (short) (a.length));
-    ((ECPublicKey) publicKey).setB(b, (short) 0, (short) (b.length));
-    ((ECPublicKey) publicKey).setG(g, (short) 0, (short) (g.length));
-    ((ECPublicKey) publicKey).setR(r, (short) 0, (short) (r.length));
-    ((ECPublicKey) publicKey).setFieldFP(p, (short) 0, (short) (p.length));
-    ((ECPublicKey) publicKey).setK(params.getH());
+    key.setA(a, (short) 0, (short) (a.length));
+    key.setB(b, (short) 0, (short) (b.length));
+    key.setG(g, (short) 0, (short) (g.length));
+    key.setR(r, (short) 0, (short) (r.length));
+    key.setFieldFP(p, (short) 0, (short) (p.length));
+    key.setK(params.getH());
   }
 }

@@ -37,11 +37,11 @@ import javacard.framework.Util;
  * are outside the scope of PIV to interpret itself) - The TAG identifier is non-compliant (no
  * class, no constructed flag, no length formatting)
  */
-public final class TLVWriter {
+final class TLVWriter {
 
-  public static final short LENGTH_1BYTE_MAX = (short) 0x7F;
-  public static final short LENGTH_2BYTE_MAX = (short) 0xFF;
-  public static final short LENGTH_3BYTE_MAX = (short) 0x7FFF;
+  private static final short LENGTH_1BYTE_MAX = (short) 0x7F;
+  private static final short LENGTH_2BYTE_MAX = (short) 0xFF;
+  private static final short LENGTH_3BYTE_MAX = (short) 0x7FFF;
   // The maximum number of data bytes for the payload, NOT including the main tag and length octets
   // NOTE:
   // - This governs how many bytes are reserved for the parent L value
@@ -59,8 +59,8 @@ public final class TLVWriter {
   //
   // CONSTANTS
   //
-  public final Object[] dataPtr;
-  public final short[] context;
+  private final Object[] dataPtr;
+  private final short[] context;
 
   public TLVWriter() {
     dataPtr = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
@@ -249,27 +249,6 @@ public final class TLVWriter {
   }
 
   /**
-   * Adds an object with no value to the TLV object
-   *
-   * @param tag The tag to write
-   */
-  public void writeNull(short tag) {
-
-    if (dataPtr[0] == null) ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-    byte[] data = (byte[]) dataPtr[0];
-
-    // TODO: Make sure we won't go over our length boundary
-
-    // Set the TAG
-    writeTag(tag);
-
-    // Set the LENGTH
-    data[context[CONTEXT_OFFSET]++] = (byte) 0;
-
-    // There is no VALUE element
-  }
-
-  /**
    * Writes the TAG portion of an object only
    *
    * @param tag The tag to write
@@ -304,9 +283,8 @@ public final class TLVWriter {
    * Writes the LENGTH portion of an object only
    *
    * @param length The length value to write
-   * @return The length of the Length bytes written
    */
-  public short writeLength(short length) {
+  public void writeLength(short length) {
 
     byte[] data = (byte[]) dataPtr[0];
 
@@ -314,18 +292,15 @@ public final class TLVWriter {
     if (length >= 0 && length <= 127) {
       // Single-byte length
       data[context[CONTEXT_OFFSET]++] = (byte) length;
-      return (short) 1;
     } else if (length > 127 && length <= 255) {
       // Double-byte length
       data[context[CONTEXT_OFFSET]++] = (byte) 0x81;
       data[context[CONTEXT_OFFSET]++] = (byte) length;
-      return (short) 2;
     } else {
       // Triple-byte length
       data[context[CONTEXT_OFFSET]++] = (byte) 0x82;
       Util.setShort(data, context[CONTEXT_OFFSET], length);
       context[CONTEXT_OFFSET] += (short) 2;
-      return (short) 3;
     }
   }
 
