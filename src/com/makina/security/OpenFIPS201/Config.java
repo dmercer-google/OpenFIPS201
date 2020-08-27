@@ -30,7 +30,7 @@ package com.makina.security.OpenFIPS201;
  * Defines all configurable elements of the PIV applet in one place. This allows customisation of
  * the data and key file system as well as controlling the behaviour of the applet.
  */
-abstract class Config {
+public abstract class Config {
 
   ///////////////////////////////////////////////////////////////////////////
   //

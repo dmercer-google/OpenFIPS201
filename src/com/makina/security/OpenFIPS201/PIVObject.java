@@ -27,19 +27,39 @@
 package com.makina.security.OpenFIPS201;
 
 /** Provides common functionality for all PIV objects (data and security) */
-abstract class PIVObject {
+public abstract class PIVObject {
 
+  //
+  // Access Rule for Read/Usage (SP800-73-4 3.5)
+  // NOTES:
+  // - This is a control flag bitmap, so multiple access rules can be combined.
+  // - NEVER and ALWAYS are special values, not considered part of the bitmap
+  // - The VCI and OCC options are out-of-scope in this implementation.
+
+  // The object may be read / key may be used under no circumstances
+  public static final byte ACCESS_MODE_NEVER = (byte) 0x00;
+
+  // The object may be accessed only after PIN authentication
+  public static final byte ACCESS_MODE_PIN = (byte) 0x01;
+
+  // The object may be accessed only IMMEDIATELY after PIN authentication
+  public static final byte ACCESS_MODE_PIN_ALWAYS = (byte) 0x02;
+
+  // The object may be accessed ALWAYS
+  public static final byte ACCESS_MODE_ALWAYS = (byte) 0x7F; // Special value rather than a bitmap
   protected static final short HEADER_ID = (short) 0;
-  private static final short HEADER_MODE_CONTACT = (short) 1;
-  private static final short HEADER_MODE_CONTACTLESS = (short) 2;
+  protected static final short HEADER_MODE_CONTACT = (short) 1;
+  protected static final short HEADER_MODE_CONTACTLESS = (short) 2;
   // We allocate some spare header space for derived attributes
-  private static final short LENGTH_HEADER = (short) 8;
+  protected static final short LENGTH_HEADER = (short) 8;
   // Linked list element
   public PIVObject nextObject;
   protected final byte[] header;
 
   protected PIVObject(byte id, byte modeContact, byte modeContactless) {
+
     header = new byte[LENGTH_HEADER];
+
     header[HEADER_ID] = id;
     header[HEADER_MODE_CONTACT] = modeContact;
     header[HEADER_MODE_CONTACTLESS] = modeContactless;
@@ -51,7 +71,7 @@ abstract class PIVObject {
    * @param id The id to search for
    * @return True if the object matches
    */
-  public final boolean match(byte id) {
+  public boolean match(byte id) {
     return (header[HEADER_ID] == id);
   }
 
@@ -60,7 +80,7 @@ abstract class PIVObject {
    *
    * @return The object identifier
    */
-  public final byte getId() {
+  public byte getId() {
     return header[HEADER_ID];
   }
 
@@ -69,7 +89,7 @@ abstract class PIVObject {
    *
    * @return The access mode for the contact interface
    */
-  public final byte getModeContact() {
+  public byte getModeContact() {
     return header[HEADER_MODE_CONTACT];
   }
 
@@ -78,7 +98,7 @@ abstract class PIVObject {
    *
    * @return The access mode for the contactless interface
    */
-  public final byte getModeContactless() {
+  public byte getModeContactless() {
     return header[HEADER_MODE_CONTACTLESS];
   }
 

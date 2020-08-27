@@ -29,7 +29,7 @@ package com.makina.security.OpenFIPS201;
 import javacard.framework.CardRuntimeException;
 import javacard.security.*;
 
-abstract class PIVKeyObjectPKI extends PIVKeyObject {
+public abstract class PIVKeyObjectPKI extends PIVKeyObject {
   protected static final byte ELEMENT_CLEAR = (byte) 0xFF;
   protected static final short CONST_TAG_RESPONSE = (short) 0x7F49;
   protected final TLVWriter pubKeyWriter;
@@ -45,7 +45,7 @@ abstract class PIVKeyObjectPKI extends PIVKeyObject {
 
   /** @return true */
   @Override
-  public final boolean isAsymmetric() {
+  public boolean isAsymmetric() {
     return true;
   }
 
@@ -56,14 +56,14 @@ abstract class PIVKeyObjectPKI extends PIVKeyObject {
    * exhaust NV RAM.
    */
   @Override
-  public final void clear() {
+  public void clear() {
     clearPrivate();
     clearPublic();
   }
 
   /** @return true if the privateKey exists and is initialized. */
   @Override
-  public final boolean isInitialised() {
+  public boolean isInitialised() {
     return (privateKey != null && privateKey.isInitialized());
   }
 
@@ -72,8 +72,10 @@ abstract class PIVKeyObjectPKI extends PIVKeyObject {
    *
    * <p>Note: If the card does not support Object deletion, repeatedly calling this method may
    * exhaust NV RAM.
+   *
+   * @throws Exception
    */
-  public final short generate(byte[] scratch, short offset) {
+  public short generate(byte[] scratch, short offset) {
     KeyPair keyPair;
     short length = 0;
     try {
@@ -106,7 +108,7 @@ abstract class PIVKeyObjectPKI extends PIVKeyObject {
   }
 
   /** Clears and dereferences the private key */
-  protected final void clearPrivate() {
+  protected void clearPrivate() {
     if (privateKey != null) {
       privateKey.clearKey();
       privateKey = null;
@@ -115,7 +117,7 @@ abstract class PIVKeyObjectPKI extends PIVKeyObject {
   }
 
   /** Clears the public key */
-  protected final void clearPublic() {
+  protected void clearPublic() {
     if (publicKey != null) {
       publicKey.clearKey();
       publicKey = null;

@@ -37,14 +37,37 @@ import javacard.framework.Util;
  * are outside the scope of PIV to interpret itself) - The TAG identifier is non-compliant (no
  * class, no constructed flag, no length formatting)
  */
-final class TLVReader {
+public final class TLVReader {
+
+  // Tag Class
+  public static final byte CLASS_UNIVERSAL = (byte) 0x00;
+  public static final byte CLASS_APPLICATION = (byte) 0x40;
+  public static final byte CLASS_CONTEXT = (byte) 0x80;
+  public static final byte CLASS_PRIVATE = (byte) 0xC0;
 
   // Masks
-  private static final byte MASK_CONSTRUCTED = (byte) 0x20;
-  private static final byte MASK_TAG_MULTI_BYTE = (byte) 0x1F;
-  private static final byte MASK_HIGH_TAG_MOREDATA = (byte) 0x80;
-  private static final byte MASK_LONG_LENGTH = (byte) 0x80;
-  private static final byte MASK_LENGTH = (byte) 0x7F;
+  public static final byte MASK_CONSTRUCTED = (byte) 0x20;
+  public static final byte MASK_LOW_TAG_NUMBER = (byte) 0x1F;
+  public static final byte MASK_HIGH_TAG_NUMBER = (byte) 0x7F;
+  public static final byte MASK_TAG_MULTI_BYTE = (byte) 0x1F;
+  public static final byte MASK_HIGH_TAG_MOREDATA = (byte) 0x80;
+  public static final byte MASK_LONG_LENGTH = (byte) 0x80;
+  public static final byte MASK_LENGTH = (byte) 0x7F;
+
+  // Universal tags
+  public static final byte ASN1_BOOLEAN = (byte) 0x01;
+  public static final byte ASN1_INTEGER = (byte) 0x02;
+  public static final byte ASN1_BIT_STRING = (byte) 0x03;
+  public static final byte ASN1_OCTET_STRING = (byte) 0x04;
+  public static final byte ASN1_NULL = (byte) 0x05;
+  public static final byte ASN1_OBJECT = (byte) 0x06;
+  public static final byte ASN1_ENUMERATED = (byte) 0x0A;
+  public static final byte ASN1_SEQUENCE = (byte) 0x10; //  "Sequence" and "Sequence of"
+  public static final byte ASN1_SET = (byte) 0x11; //  "Set" and "Set of"
+  public static final byte ASN1_PRINT_STRING = (byte) 0x13;
+  public static final byte ASN1_T61_STRING = (byte) 0x14;
+  public static final byte ASN1_IA5_STRING = (byte) 0x16;
+  public static final byte ASN1_UTC_TIME = (byte) 0x17;
   // The length of the entire TLV buffer for boundary checking
   private static final short CONTEXT_LENGTH = (short) 0;
   // The current position in the buffer
@@ -52,11 +75,10 @@ final class TLVReader {
   // The offset given when the data was set, allowing for a reset
   private static final short CONTEXT_POSITION_RESET = (short) 2;
   private static final short LENGTH_CONTEXT = (short) 4;
-
   //
   // CONSTANTS
   //
-  private final Object[] dataPtr;
+  public final Object[] dataPtr;
 
   //
   // TODO: Cache Tag, Length and ValueOffset values when find() completes, so that
@@ -65,7 +87,7 @@ final class TLVReader {
   // private static final short CONTEXT_T					= (short)4;
   // private static final short CONTEXT_L					= (short)5;
   // private static final short CONTEXT_V					= (short)6;
-  private final short[] context;
+  public final short[] context;
 
   public TLVReader() {
     dataPtr = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
@@ -190,6 +212,12 @@ final class TLVReader {
     return (dataPtr[0] != null);
   }
 
+  /** Restores the current position to the offset originally supplied to init() */
+  public void resetPosition() {
+    if (!isInitialized()) ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+    context[CONTEXT_POSITION] = context[CONTEXT_POSITION_RESET];
+  }
+
   /**
    * Finds a tag in the currently active TLV object
    *
@@ -270,9 +298,15 @@ final class TLVReader {
         < context[CONTEXT_LENGTH]);
   }
 
-  /** Moves to the first tag inside the current tag */
-  public void moveInto() {
+  /**
+   * Moves to the first tag inside the current tag
+   *
+   * @return True if the move was successful, or False if the buffer was overrun
+   */
+  public boolean moveInto() {
     context[CONTEXT_POSITION] = getDataOffset();
+    return ((short) (context[CONTEXT_POSITION] - context[CONTEXT_POSITION_RESET])
+        < context[CONTEXT_LENGTH]);
   }
 
   /**

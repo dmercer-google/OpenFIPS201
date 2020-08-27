@@ -40,7 +40,7 @@ import javacard.framework.*;
  * <p>The following is out-of-scope in this revision: - Elliptic curve cryptography mechanisms -
  * Virtual contact interface - Secure messaging using Opacity - Biometric on-card comparison (OCC)
  */
-final class PIV {
+public final class PIV {
 
   //
   // Persistent Objects
@@ -70,13 +70,13 @@ final class PIV {
   //
   // PIV-specific ISO 7816 STATUS WORD (SW12) responses
   //
-  private static final short SW_RETRIES_REMAINING = (short) 0x63C0;
+  public static final short SW_RETRIES_REMAINING = (short) 0x63C0;
 
   /*
    * PIV APPLICATION CONSTANTS
    */
-  private static final short SW_REFERENCE_NOT_FOUND = (short) 0x6A88;
-  private static final short SW_OPERATION_BLOCKED = (short) 0x6983;
+  public static final short SW_REFERENCE_NOT_FOUND = (short) 0x6A88;
+  public static final short SW_OPERATION_BLOCKED = (short) 0x6983;
   // The current authentication stage
   private static final short OFFSET_AUTH_STATE = (short) 0;
   // The key id used in the current authentication
@@ -111,8 +111,8 @@ final class PIV {
   // Holds any authentication related intermediary state
   private final byte[] authenticationContext;
   // TLV management objects
-  private final TLVReader tlvReader;
-  private final TLVWriter tlvWriter;
+  final TLVReader tlvReader;
+  final TLVWriter tlvWriter;
   // Data Store
   private PIVDataObject firstDataObject;
 
@@ -802,8 +802,9 @@ final class PIV {
    * @param id The requested PIN reference
    * @param buffer The incoming APDU buffer
    * @param offset The starting offset of the CDATA element
+   * @param length The length of the CDATA element
    */
-  public void resetRetryCounter(byte id, byte[] buffer, short offset) {
+  public void resetRetryCounter(byte id, byte[] buffer, short offset, short length) {
 
     //
     // PRE-CONDITIONS
@@ -896,6 +897,11 @@ final class PIV {
   public void updateSecurityStatus(boolean isContactless, boolean isSecureChannel) {
     cspPIV.setIsContactless(isContactless);
     cspPIV.setIsSecureChannel(isSecureChannel);
+  }
+
+  /** Resets the PIN ALWAYS security status */
+  public void resetPinAlways() {
+    cspPIV.setPINAlways(false);
   }
 
   /** Clears any intermediate authentication status used by 'GENERAL AUTHENTICATE' */
@@ -1733,6 +1739,7 @@ final class PIV {
    * which administrative key references are updated and is intended to fill in the gap in PIV that
    * does not cover how pre-personalisation is implemented.
    *
+   * @param id The target key / pin reference being changed
    * @param buffer The incoming APDU buffer
    * @param offset The starting offset of the CDATA section
    * @param length The length of the CDATA section
@@ -1740,8 +1747,9 @@ final class PIV {
    *     reference that is not covered by CHANGE REFERENCE DATA already - It requires a global
    *     platform secure channel to be operating with the CEncDec attribute (encrypted) - It does
    *     NOT require the old value to be supplied in order to change a key - It also supports
+   *     updating the PIN/PUK values, without requiring knowledge of the old value
    */
-  public void changeReferenceDataAdmin(byte[] buffer, short offset, short length) {
+  public void changeReferenceDataAdmin(byte id, byte[] buffer, short offset, short length) {
 
     final byte CONST_TAG_SEQUENCE = (byte) 0x30;
 

@@ -37,36 +37,18 @@ import javacardx.crypto.Cipher;
  * Provides all security and cryptographic services required by PIV, including the storage of PIN
  * and KEY objects, as well as cryptographic primitives.
  */
-final class PIVSecurityProvider {
+public final class PIVSecurityProvider {
 
   //
-  // Access Rule for Read/Usage (SP800-73-4 3.5)
-  // NOTES:
-  // - This is a control flag bitmap, so multiple access rules can be combined.
-  // - NEVER and ALWAYS are special values, not considered part of the bitmap
-  // - The VCI and OCC options are out-of-scope in this implementation.
-
-  // The object may be read / key may be used under no circumstances
-  private static final byte ACCESS_MODE_NEVER = (byte) 0x00;
-
-  // The object may be accessed only after PIN authentication
-  private static final byte ACCESS_MODE_PIN = (byte) 0x01;
-
-  // The object may be accessed only IMMEDIATELY after PIN authentication
-  private static final byte ACCESS_MODE_PIN_ALWAYS = (byte) 0x02;
-
-  // The object may be accessed ALWAYS
-  private static final byte ACCESS_MODE_ALWAYS = (byte) 0x7F; // Special value rather than a bitmap
+  // Persistent Objects
+  //
 
   // If non-zero, the current communications interface is contactless
   private static final short FLAG_CONTACTLESS = (short) 0;
-
   // If non-zero, a valid GP Secure Channel authentication with CENC+CMAC is established
   private static final short FLAG_SECURE_CHANNEL = (short) 1;
-
   // If non-zero, a PIN verification occurred prior to the last GENERAL AUTHENTICATE command
   private static final short FLAG_PIN_ALWAYS = (short) 2;
-
   private static final short LENGTH_FLAGS = (short) 3;
   // PIN objects
   public final OwnerPIN cardPIN; // 80 - Card Application PIN
@@ -263,7 +245,7 @@ final class PIVSecurityProvider {
     // Iterate through the key store for ROLE_ADMIN keys
     if (!requiresSecureChannel) {
       PIVKeyObject key = firstKey;
-      while (key != null) {
+      while (key != null && !valid) {
         if (key.hasRole(PIVKeyObject.ROLE_ADMIN) && key.getSecurityStatus()) {
           valid = true;
           break;
@@ -298,16 +280,16 @@ final class PIVSecurityProvider {
     byte mode =
         (securityFlags[FLAG_CONTACTLESS]) ? object.getModeContactless() : object.getModeContact();
 
-    if (mode == ACCESS_MODE_NEVER) {
+    if (mode == PIVObject.ACCESS_MODE_NEVER) {
       valid = false;
-    } else if (mode == ACCESS_MODE_ALWAYS) {
+    } else if (mode == PIVObject.ACCESS_MODE_ALWAYS) {
       valid = true;
     } else {
       // Assume true, then if any required permission is not met, we fail
       valid = true;
 
       // Check for PIN and GLOBAL PIN
-      if ((mode & ACCESS_MODE_PIN) == ACCESS_MODE_PIN) {
+      if ((mode & PIVObject.ACCESS_MODE_PIN) == PIVObject.ACCESS_MODE_PIN) {
 
         // If both FEATURE_PIN_CARD_ENABLED and FEATURE_PIN_GLOBAL_VERIFY are false, automatically
         // fail
@@ -324,7 +306,7 @@ final class PIVSecurityProvider {
       }
 
       // Check for PIN ALWAYS
-      if (((mode & ACCESS_MODE_PIN_ALWAYS) == ACCESS_MODE_PIN_ALWAYS)
+      if (((mode & PIVObject.ACCESS_MODE_PIN_ALWAYS) == PIVObject.ACCESS_MODE_PIN_ALWAYS)
           && !securityFlags[FLAG_PIN_ALWAYS]) {
         valid = false;
       }

@@ -31,7 +31,7 @@ import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 
 /** Provides functionality for PIV key objects */
-abstract class PIVKeyObject extends PIVObject {
+public abstract class PIVKeyObject extends PIVObject {
 
   // No special roles are defined by this key
   public static final byte ROLE_NONE = (byte) 0x00;
@@ -51,7 +51,7 @@ abstract class PIVKeyObject extends PIVObject {
   // This key can only be generated on-card (i.e. injection is blocked)
   public static final byte ROLE_GENERATE_ONLY = (byte) 0x08;
   protected static final short HEADER_MECHANISM = (short) 3;
-  private static final short HEADER_ROLE = (short) 4;
+  protected static final short HEADER_ROLE = (short) 4;
   private static final short FLAGS_AUTHENTICATED = (short) 0;
   private static final short LENGTH_FLAGS = (short) 1;
   // Transient declaration
@@ -101,12 +101,16 @@ abstract class PIVKeyObject extends PIVObject {
     return key;
   }
 
-  public final boolean match(byte id, byte mechanism) {
+  public boolean match(byte id, byte mechanism) {
     return (header[HEADER_ID] == id && header[HEADER_MECHANISM] == mechanism);
   }
 
   public final byte getMechanism() {
     return header[HEADER_MECHANISM];
+  }
+
+  public final byte getRoles() {
+    return header[HEADER_ROLE];
   }
 
   public final boolean hasRole(byte role) {
@@ -131,7 +135,7 @@ abstract class PIVKeyObject extends PIVObject {
   }
 
   /** @return the length of the key in bits */
-  protected abstract short getKeyLengthBits();
+  public abstract short getKeyLengthBits();
 
   public abstract short getBlockLength();
 
