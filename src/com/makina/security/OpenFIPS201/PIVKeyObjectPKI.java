@@ -102,7 +102,7 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
       keyPair = null;
       // Any existing public key is now invalid
       clearPublic();
-      OpenFIPS201.requestGc();
+      runGc();
     }
     return length;
   }
@@ -112,7 +112,7 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
     if (privateKey != null) {
       privateKey.clearKey();
       privateKey = null;
-      OpenFIPS201.requestGc();
+      runGc();
     }
   }
 
@@ -121,7 +121,7 @@ public abstract class PIVKeyObjectPKI extends PIVKeyObject {
     if (publicKey != null) {
       publicKey.clearKey();
       publicKey = null;
-      OpenFIPS201.requestGc();
+      runGc();
     }
   }
 

@@ -33,6 +33,10 @@ import javacard.framework.Util;
 
 /** Provides functionality for PIV data objects */
 public final class PIVDataObject extends PIVObject {
+
+  // Indicates whether this object is populated with data or not
+  // It exists to cover the scenario where the data memory is allocated, but the write fails mid-way
+  private static final short HEADER_POPULATED = (short) 3;
   // Note:  Do NOT use content.length to determine the number of bytes in the content array
   // rather use getLength().
   public byte[] content;
@@ -54,7 +58,7 @@ public final class PIVDataObject extends PIVObject {
       ISOException.throwIt(ISO7816.SW_DATA_INVALID);
     } else if (length == 0) {
       content = null;
-      OpenFIPS201.requestGc();
+      runGc();
     } else if (content == null) {
       content = new byte[length];
     } else if (length > (short) content.length) {

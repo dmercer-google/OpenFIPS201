@@ -26,6 +26,8 @@
 
 package com.makina.security.OpenFIPS201;
 
+import javacard.framework.JCSystem;
+
 /** Provides common functionality for all PIV objects (data and security) */
 public abstract class PIVObject {
 
@@ -100,6 +102,13 @@ public abstract class PIVObject {
    */
   public byte getModeContactless() {
     return header[HEADER_MODE_CONTACTLESS];
+  }
+
+  /** Requests object deletion if supported by the card. */
+  protected void runGc() {
+    if (JCSystem.isObjectDeletionSupported()) {
+      JCSystem.requestObjectDeletion();
+    }
   }
 
   /** Clears the current object's value */

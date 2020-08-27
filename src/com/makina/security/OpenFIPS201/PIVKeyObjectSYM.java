@@ -132,7 +132,7 @@ public final class PIVKeyObjectSYM extends PIVKeyObject {
     if (key != null) {
       key.clearKey();
       key = null;
-      OpenFIPS201.requestGc();
+      runGc();
     }
   }
 
