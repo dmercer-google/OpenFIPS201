@@ -31,7 +31,7 @@ import javacard.framework.ISOException;
 import javacard.security.*;
 
 /** Provides functionality for ECC PIV key objects */
-public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
+final class PIVKeyObjectECC extends PIVKeyObjectPKI {
   private static final byte CONST_POINT_UNCOMPRESSED = (byte) 0x04;
 
   // The ECC public key element tag
@@ -43,7 +43,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
   private final ECParams params;
   private final short marshaledPubKeyLen;
 
-  public PIVKeyObjectECC(
+  PIVKeyObjectECC(
       byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
     super(id, modeContact, modeContactless, mechanism, role);
 
@@ -84,7 +84,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
    * @param length the length of the element
    */
   @Override
-  public void updateElement(byte element, byte[] buffer, short offset, short length) {
+  protected void updateElement(byte element, byte[] buffer, short offset, short length) {
     switch (element) {
       case ELEMENT_ECC_POINT:
         if (length != marshaledPubKeyLen) {
@@ -130,7 +130,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
    * @return the length of the computed secret
    */
   @Override
-  public short keyAgreement(
+  short keyAgreement(
       KeyAgreement csp,
       byte[] inBuffer,
       short inOffset,
@@ -157,7 +157,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
    * @return the length of the signature
    */
   @Override
-  public short sign(
+  short sign(
       Object csp,
       byte[] inBuffer,
       short inOffset,
@@ -178,7 +178,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
    * @return the length of the marshaled public key
    */
   @Override
-  public short marshalPublic(PublicKey pubKey, byte[] scratch, short offset) {
+  protected short marshalPublic(PublicKey pubKey, byte[] scratch, short offset) {
     pubKeyWriter.reset();
     // adding 5 bytes to the marshaled key to account for other APDU overhead.
     pubKeyWriter.init(scratch, offset, (short) (marshaledPubKeyLen + 5), CONST_TAG_RESPONSE);
@@ -198,7 +198,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
    * @return the block length equal to the key length
    */
   @Override
-  public short getBlockLength() {
+  protected short getBlockLength() {
     return getKeyLengthBytes();
   }
 
@@ -208,7 +208,7 @@ public final class PIVKeyObjectECC extends PIVKeyObjectPKI {
    * @return the length of the key
    */
   @Override
-  public short getKeyLengthBits() {
+  protected short getKeyLengthBits() {
     switch (getMechanism()) {
       case PIV.ID_ALG_ECC_P256:
         return KeyBuilder.LENGTH_EC_FP_256;

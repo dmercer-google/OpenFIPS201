@@ -26,10 +26,8 @@
 
 package com.makina.security.OpenFIPS201;
 
-import javacard.framework.JCSystem;
-
 /** Provides common functionality for all PIV objects (data and security) */
-public abstract class PIVObject {
+abstract class PIVObject {
 
   //
   // Access Rule for Read/Usage (SP800-73-4 3.5)
@@ -39,23 +37,24 @@ public abstract class PIVObject {
   // - The VCI and OCC options are out-of-scope in this implementation.
 
   // The object may be read / key may be used under no circumstances
-  public static final byte ACCESS_MODE_NEVER = (byte) 0x00;
+  static final byte ACCESS_MODE_NEVER = (byte) 0x00;
 
   // The object may be accessed only after PIN authentication
-  public static final byte ACCESS_MODE_PIN = (byte) 0x01;
+  static final byte ACCESS_MODE_PIN = (byte) 0x01;
 
   // The object may be accessed only IMMEDIATELY after PIN authentication
-  public static final byte ACCESS_MODE_PIN_ALWAYS = (byte) 0x02;
+  static final byte ACCESS_MODE_PIN_ALWAYS = (byte) 0x02;
 
   // The object may be accessed ALWAYS
-  public static final byte ACCESS_MODE_ALWAYS = (byte) 0x7F; // Special value rather than a bitmap
+  static final byte ACCESS_MODE_ALWAYS = (byte) 0x7F; // Special value rather than a bitmap
+
   protected static final short HEADER_ID = (short) 0;
   protected static final short HEADER_MODE_CONTACT = (short) 1;
   protected static final short HEADER_MODE_CONTACTLESS = (short) 2;
   // We allocate some spare header space for derived attributes
   protected static final short LENGTH_HEADER = (short) 8;
   // Linked list element
-  public PIVObject nextObject;
+  PIVObject nextObject;
   protected final byte[] header;
 
   protected PIVObject(byte id, byte modeContact, byte modeContactless) {
@@ -73,7 +72,7 @@ public abstract class PIVObject {
    * @param id The id to search for
    * @return True if the object matches
    */
-  public boolean match(byte id) {
+  final boolean match(byte id) {
     return (header[HEADER_ID] == id);
   }
 
@@ -82,7 +81,7 @@ public abstract class PIVObject {
    *
    * @return The object identifier
    */
-  public byte getId() {
+  final byte getId() {
     return header[HEADER_ID];
   }
 
@@ -91,7 +90,7 @@ public abstract class PIVObject {
    *
    * @return The access mode for the contact interface
    */
-  public byte getModeContact() {
+  final byte getModeContact() {
     return header[HEADER_MODE_CONTACT];
   }
 
@@ -100,20 +99,13 @@ public abstract class PIVObject {
    *
    * @return The access mode for the contactless interface
    */
-  public byte getModeContactless() {
+  final byte getModeContactless() {
     return header[HEADER_MODE_CONTACTLESS];
   }
 
-  /** Requests object deletion if supported by the card. */
-  protected void runGc() {
-    if (JCSystem.isObjectDeletionSupported()) {
-      JCSystem.requestObjectDeletion();
-    }
-  }
-
   /** Clears the current object's value */
-  public abstract void clear();
+  abstract void clear();
 
   /** @return returns true if the object has been initialized */
-  public abstract boolean isInitialised();
+  abstract boolean isInitialised();
 }

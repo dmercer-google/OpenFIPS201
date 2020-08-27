@@ -105,7 +105,7 @@ final class ECParamsP256 extends ECParams {
 
   private ECParamsP256() {}
 
-  public static ECParams Instance() {
+  static ECParams Instance() {
     if (instance == null) {
       instance = new ECParamsP256();
     }

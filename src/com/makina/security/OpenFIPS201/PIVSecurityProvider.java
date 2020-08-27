@@ -37,7 +37,7 @@ import javacardx.crypto.Cipher;
  * Provides all security and cryptographic services required by PIV, including the storage of PIN
  * and KEY objects, as well as cryptographic primitives.
  */
-public final class PIVSecurityProvider {
+final class PIVSecurityProvider {
 
   //
   // Persistent Objects
@@ -51,9 +51,9 @@ public final class PIVSecurityProvider {
   private static final short FLAG_PIN_ALWAYS = (short) 2;
   private static final short LENGTH_FLAGS = (short) 3;
   // PIN objects
-  public final OwnerPIN cardPIN; // 80 - Card Application PIN
-  public final OwnerPIN cardPUK; // 81 - PIN Unlocking Key (PUK)
-  public final CVMPIN globalPIN; // 00 - Global PIN
+  final OwnerPIN cardPIN; // 80 - Card Application PIN
+  final OwnerPIN cardPUK; // 81 - PIN Unlocking Key (PUK)
+  final CVMPIN globalPIN; // 00 - Global PIN
 
   // Cryptographic Service Providers
   private final Cipher cspAES;
@@ -71,7 +71,7 @@ public final class PIVSecurityProvider {
   // Key objects
   private PIVKeyObject firstKey;
 
-  public PIVSecurityProvider() {
+  PIVSecurityProvider() {
 
     // Create our CSPs
     cspAES = Cipher.getInstance(Cipher.ALG_AES_BLOCK_128_ECB_NOPAD, false);
@@ -101,7 +101,7 @@ public final class PIVSecurityProvider {
     globalPIN = new CVMPIN(Config.PIN_RETRIES, Config.PIN_LENGTH_MAX);
   }
 
-  public void resetSecurityStatus() {
+  void resetSecurityStatus() {
 
     if (cardPIN.isValidated()) cardPIN.reset();
     if (cardPUK.isValidated()) cardPUK.reset();
@@ -114,11 +114,7 @@ public final class PIVSecurityProvider {
     }
   }
 
-  public boolean getPINAlways() {
-    return (securityFlags[FLAG_PIN_ALWAYS] && (cardPIN.isValidated() || globalPIN.isValidated()));
-  }
-
-  public void setPINAlways(boolean value) {
+  void setPINAlways(boolean value) {
     securityFlags[FLAG_PIN_ALWAYS] = value;
   }
 
@@ -127,7 +123,7 @@ public final class PIVSecurityProvider {
    *
    * @return True if the current communications interface is contactless
    */
-  public boolean getIsContactless() {
+  boolean getIsContactless() {
     return securityFlags[FLAG_CONTACTLESS];
   }
 
@@ -136,17 +132,8 @@ public final class PIVSecurityProvider {
    *
    * @param value The new value to set
    */
-  public void setIsContactless(boolean value) {
+  void setIsContactless(boolean value) {
     securityFlags[FLAG_CONTACTLESS] = value;
-  }
-
-  /**
-   * Gets the current flag for the GlobalPlatform Secure Channel Status
-   *
-   * @return True if there is a current GlobalPlatform Secure Channel with CENC+CMAC
-   */
-  public boolean getIsSecureChannel() {
-    return securityFlags[FLAG_SECURE_CHANNEL];
   }
 
   /**
@@ -154,11 +141,11 @@ public final class PIVSecurityProvider {
    *
    * @param value The new value to set
    */
-  public void setIsSecureChannel(boolean value) {
+  void setIsSecureChannel(boolean value) {
     securityFlags[FLAG_SECURE_CHANNEL] = value;
   }
 
-  public PIVKeyObject selectKey(byte id, byte mechanism) {
+  PIVKeyObject selectKey(byte id, byte mechanism) {
 
     // First, map the default mechanism code to TDEA 3KEY
     if (mechanism == PIV.ID_ALG_DEFAULT) {
@@ -176,7 +163,7 @@ public final class PIVSecurityProvider {
     return null;
   }
 
-  public boolean keyExists(byte id) {
+  boolean keyExists(byte id) {
 
     PIVKeyObject key = firstKey;
 
@@ -198,7 +185,7 @@ public final class PIVSecurityProvider {
    * @param mechanism The cryptographic mechanism
    * @param role The key role / privileges control bitmap
    */
-  public void createKey(
+  void createKey(
       byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
 
     // First, map the default mechanism code to TDEA 3KEY
@@ -231,7 +218,7 @@ public final class PIVSecurityProvider {
    * @param requiresSecureChannel If true, a GlobalPlatform SCP session must be active
    * @return True if the access mode check passed
    */
-  public boolean checkAccessModeAdmin(boolean requiresSecureChannel) {
+  boolean checkAccessModeAdmin(boolean requiresSecureChannel) {
 
     //
     // This check can pass by either the FLAG_SECURE_CHANNEL flag being set, or by finding
@@ -272,7 +259,7 @@ public final class PIVSecurityProvider {
    * @param object The object to check permissions for
    * @return True of the access mode check passed
    */
-  public boolean checkAccessModeObject(PIVObject object) {
+  boolean checkAccessModeObject(PIVObject object) {
 
     boolean valid;
 
@@ -326,7 +313,7 @@ public final class PIVSecurityProvider {
    * @param offset The starting offset to write the random data
    * @param length The number of bytes to generate
    */
-  public void generateRandom(byte[] buffer, short offset, short length) {
+  void generateRandom(byte[] buffer, short offset, short length) {
     if (Config.FEATURE_PIV_TEST_VECTORS) {
       Util.arrayCopyNonAtomic(Config.TEST_VECTOR_RANDOM, (short) 0, buffer, offset, length);
     } else {
@@ -345,7 +332,7 @@ public final class PIVSecurityProvider {
    * @param outOffset The offset for outBuffer
    * @return The length of the ciphertext bytes written
    */
-  public short encrypt(
+  short encrypt(
       PIVKeyObject key,
       byte[] inBuffer,
       short inOffset,
@@ -378,7 +365,7 @@ public final class PIVSecurityProvider {
         .encrypt(cipher, inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
-  public short sign(
+  short sign(
       PIVKeyObject key,
       byte[] inBuffer,
       short inOffset,
@@ -414,7 +401,7 @@ public final class PIVSecurityProvider {
     return ((PIVKeyObjectPKI) key).sign(signer, inBuffer, inOffset, inLength, outBuffer, outOffset);
   }
 
-  public short keyAgreement(
+  short keyAgreement(
       PIVKeyObject key,
       byte[] inBuffer,
       short inOffset,
@@ -437,7 +424,7 @@ public final class PIVSecurityProvider {
    * @param offset The starting offset of the buffer
    * @param length The length within the buffer to clear
    */
-  public static void zeroise(byte[] buffer, short offset, short length) {
+  static void zeroise(byte[] buffer, short offset, short length) {
 
     Util.arrayFillNonAtomic(buffer, offset, length, (byte) 0x00);
     Util.arrayFillNonAtomic(buffer, offset, length, (byte) 0xFF);

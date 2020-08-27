@@ -33,9 +33,9 @@ import org.globalplatform.CVM;
 import org.globalplatform.GPSystem;
 
 /** Provides an OwnerPIN proxy to the CVM class to allow uniform handling */
-public final class CVMPIN extends OwnerPIN implements PIN {
+final class CVMPIN extends OwnerPIN implements PIN {
 
-  final CVM cvm;
+  private final CVM cvm;
 
   /**
    * Constructor
@@ -43,7 +43,7 @@ public final class CVMPIN extends OwnerPIN implements PIN {
    * @param tryLimit The number of incorrect attempts before blocking
    * @param maxPINSize The maximum length of the PIN
    */
-  public CVMPIN(byte tryLimit, byte maxPINSize) throws PINException {
+  CVMPIN(byte tryLimit, byte maxPINSize) throws PINException {
 
     super(tryLimit, maxPINSize);
 

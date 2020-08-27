@@ -31,16 +31,16 @@ import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 
 /** Provides functionality for PIV key objects */
-public abstract class PIVKeyObject extends PIVObject {
+abstract class PIVKeyObject extends PIVObject {
 
   // No special roles are defined by this key
-  public static final byte ROLE_NONE = (byte) 0x00;
+  static final byte ROLE_NONE = (byte) 0x00;
   // This key can be used for administrative authentication
-  public static final byte ROLE_ADMIN = (byte) 0x01;
+  static final byte ROLE_ADMIN = (byte) 0x01;
   // This key can be used for external authentication
-  public static final byte ROLE_AUTH_EXTERNAL = (byte) 0x02;
+  static final byte ROLE_AUTH_EXTERNAL = (byte) 0x02;
   // This key can be used for internal authentication
-  public static final byte ROLE_AUTH_INTERNAL = (byte) 0x04;
+  static final byte ROLE_AUTH_INTERNAL = (byte) 0x04;
 
   //
   // Key Roles
@@ -49,9 +49,9 @@ public abstract class PIVKeyObject extends PIVObject {
   // set at once.
   //
   // This key can only be generated on-card (i.e. injection is blocked)
-  public static final byte ROLE_GENERATE_ONLY = (byte) 0x08;
   protected static final short HEADER_MECHANISM = (short) 3;
-  protected static final short HEADER_ROLE = (short) 4;
+
+  private static final short HEADER_ROLE = (short) 4;
   private static final short FLAGS_AUTHENTICATED = (short) 0;
   private static final short LENGTH_FLAGS = (short) 1;
   // Transient declaration
@@ -70,7 +70,7 @@ public abstract class PIVKeyObject extends PIVObject {
     resetSecurityStatus();
   }
 
-  public static PIVKeyObject create(
+  static PIVKeyObject create(
       byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
 
     PIVKeyObject key;
@@ -101,45 +101,41 @@ public abstract class PIVKeyObject extends PIVObject {
     return key;
   }
 
-  public boolean match(byte id, byte mechanism) {
+  boolean match(byte id, byte mechanism) {
     return (header[HEADER_ID] == id && header[HEADER_MECHANISM] == mechanism);
   }
 
-  public final byte getMechanism() {
+  final byte getMechanism() {
     return header[HEADER_MECHANISM];
   }
 
-  public final byte getRoles() {
-    return header[HEADER_ROLE];
-  }
-
-  public final boolean hasRole(byte role) {
+  final boolean hasRole(byte role) {
     return ((header[HEADER_ROLE] & role) == role);
   }
 
-  public final void resetSecurityStatus() {
+  final void resetSecurityStatus() {
     securityFlags[FLAGS_AUTHENTICATED] = false;
   }
 
-  public final void setSecurityStatus() {
+  final void setSecurityStatus() {
     securityFlags[FLAGS_AUTHENTICATED] = true;
   }
 
-  public final boolean getSecurityStatus() {
+  final boolean getSecurityStatus() {
     return (securityFlags[FLAGS_AUTHENTICATED]);
   }
 
   /** @return the length of the key in bytes */
-  public final short getKeyLengthBytes() {
+  protected final short getKeyLengthBytes() {
     return (short) (getKeyLengthBits() / 8);
   }
 
   /** @return the length of the key in bits */
-  public abstract short getKeyLengthBits();
+  protected abstract short getKeyLengthBits();
 
-  public abstract short getBlockLength();
+  protected abstract short getBlockLength();
 
-  public abstract boolean isAsymmetric();
+  protected abstract boolean isAsymmetric();
 
-  public abstract void updateElement(byte element, byte[] buffer, short offset, short length);
+  protected abstract void updateElement(byte element, byte[] buffer, short offset, short length);
 }

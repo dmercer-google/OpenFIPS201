@@ -40,43 +40,43 @@ import javacard.framework.*;
  * <p>The following is out-of-scope in this revision: - Elliptic curve cryptography mechanisms -
  * Virtual contact interface - Secure messaging using Opacity - Biometric on-card comparison (OCC)
  */
-public final class PIV {
+final class PIV {
 
   //
   // Persistent Objects
   //
 
   // Transient buffer allocation
-  public static final short LENGTH_SCRATCH = (short) 284;
+  private static final short LENGTH_SCRATCH = (short) 284;
   //
   // PIN key reference definitions
   //
-  public static final byte ID_KEY_GLOBAL_PIN = (byte) 0x00;
-  public static final byte ID_KEY_PIN = (byte) 0x80;
-  public static final byte ID_KEY_PUK = (byte) 0x81;
-  public static final byte ID_ALG_DEFAULT = (byte) 0x00; // This maps to TDEA_3KEY
+  static final byte ID_KEY_GLOBAL_PIN = (byte) 0x00;
+  static final byte ID_KEY_PIN = (byte) 0x80;
+  static final byte ID_KEY_PUK = (byte) 0x81;
+  static final byte ID_ALG_DEFAULT = (byte) 0x00; // This maps to TDEA_3KEY
 
   //
   // Transient Objects
   //
-  public static final byte ID_ALG_TDEA_3KEY = (byte) 0x03;
-  public static final byte ID_ALG_RSA_1024 = (byte) 0x06;
-  public static final byte ID_ALG_RSA_2048 = (byte) 0x07;
-  public static final byte ID_ALG_AES_128 = (byte) 0x08;
-  public static final byte ID_ALG_AES_192 = (byte) 0x0A;
-  public static final byte ID_ALG_AES_256 = (byte) 0x0C;
-  public static final byte ID_ALG_ECC_P256 = (byte) 0x11;
-  public static final byte ID_ALG_ECC_P384 = (byte) 0x14;
+  static final byte ID_ALG_TDEA_3KEY = (byte) 0x03;
+  static final byte ID_ALG_RSA_1024 = (byte) 0x06;
+  static final byte ID_ALG_RSA_2048 = (byte) 0x07;
+  static final byte ID_ALG_AES_128 = (byte) 0x08;
+  static final byte ID_ALG_AES_192 = (byte) 0x0A;
+  static final byte ID_ALG_AES_256 = (byte) 0x0C;
+  static final byte ID_ALG_ECC_P256 = (byte) 0x11;
+  static final byte ID_ALG_ECC_P384 = (byte) 0x14;
   //
   // PIV-specific ISO 7816 STATUS WORD (SW12) responses
   //
-  public static final short SW_RETRIES_REMAINING = (short) 0x63C0;
+  private static final short SW_RETRIES_REMAINING = (short) 0x63C0;
 
   /*
    * PIV APPLICATION CONSTANTS
    */
-  public static final short SW_REFERENCE_NOT_FOUND = (short) 0x6A88;
-  public static final short SW_OPERATION_BLOCKED = (short) 0x6983;
+  private static final short SW_REFERENCE_NOT_FOUND = (short) 0x6A88;
+  private static final short SW_OPERATION_BLOCKED = (short) 0x6983;
   // The current authentication stage
   private static final short OFFSET_AUTH_STATE = (short) 0;
   // The key id used in the current authentication
@@ -102,6 +102,9 @@ public final class PIV {
   private static final short AUTH_STATE_EXTERNAL = (short) 1;
   // A WITNESS has been requested by the client application (Mutual Authentication)
   private static final short AUTH_STATE_MUTUAL = (short) 2;
+
+  private static final byte ROLE_GENERATE_ONLY = (byte) 0x08;
+
   // Command Chaining Handler
   private final ChainBuffer chainBuffer;
   // Cryptography Service Provider
@@ -111,8 +114,8 @@ public final class PIV {
   // Holds any authentication related intermediary state
   private final byte[] authenticationContext;
   // TLV management objects
-  final TLVReader tlvReader;
-  final TLVWriter tlvWriter;
+  private final TLVReader tlvReader;
+  private final TLVWriter tlvWriter;
   // Data Store
   private PIVDataObject firstDataObject;
 
@@ -121,7 +124,7 @@ public final class PIV {
    *
    * @param chainBuffer A reference to the shared chainBuffer for multi-frame APDU support
    */
-  public PIV(ChainBuffer chainBuffer) {
+  PIV(ChainBuffer chainBuffer) {
 
     //
     // Data Allocation
@@ -175,7 +178,7 @@ public final class PIV {
    * @param offset The starting offset of the CDATA section
    * @return The length of the returned APT object
    */
-  public short select(byte[] buffer, short offset) {
+  short select(byte[] buffer, short offset) {
 
     //
     // PRE-CONDITIONS
@@ -198,7 +201,7 @@ public final class PIV {
    * Handles the PIV requirements for deselection of the application. Although this is not
    * explicitly stated as a PIV card command, its functionality is implied in the SELECT
    */
-  public void deselect() {
+  void deselect() {
 
     // If the currently selected application is the PIV Card Application when the SELECT command is
     // given and the AID in the data field of the SELECT command is either the AID of the PIV Card
@@ -222,9 +225,8 @@ public final class PIV {
    *
    * @param buffer The incoming APDU buffer
    * @param offset The starting offset of the CDATA section
-   * @return The length of the entire data object
    */
-  public short getData(byte[] buffer, short offset) {
+  void getData(byte[] buffer, short offset) {
 
     final byte CONST_TAG = (byte) 0x5C;
 
@@ -332,9 +334,6 @@ public final class PIV {
     // STEP 1 - Set up the outgoing chainbuffer
     short length = data.getLength();
     chainBuffer.setOutgoing(data.content, (short) 0, length, false);
-
-    // Done - return how many bytes we will process
-    return length;
   }
 
   /**
@@ -345,7 +344,7 @@ public final class PIV {
    * @param offset The starting offset of the CDATA section
    * @param length The length of the CDATA section
    */
-  public void putData(byte[] buffer, short offset, short length) {
+  void putData(byte[] buffer, short offset, short length) {
 
     final byte CONST_TAG = (byte) 0x5C;
     final byte CONST_DATA = (byte) 0x53;
@@ -460,7 +459,7 @@ public final class PIV {
    * @param offset The starting offset of the CDATA element
    * @param length The length of the CDATA element
    */
-  public void verify(byte id, byte[] buffer, short offset, short length) {
+  void verify(byte id, byte[] buffer, short offset, short length) {
 
     //
     // PRE-CONDITIONS
@@ -548,7 +547,7 @@ public final class PIV {
    *
    * @param id The requested PIN reference
    */
-  public void verifyGetStatus(byte id) {
+  void verifyGetStatus(byte id) {
 
     OwnerPIN pin = null;
 
@@ -592,7 +591,7 @@ public final class PIV {
    *
    * @param id The requested PIN reference
    */
-  public void verifyResetStatus(byte id) {
+  void verifyResetStatus(byte id) {
 
     // The security status of the key reference specified in P2 shall be set to FALSE and
     // the retry counter associated with the key reference shall remain unchanged.
@@ -632,7 +631,7 @@ public final class PIV {
    * @param buffer The incoming APDU buffer
    * @param offset The starting offset of the CDATA element
    */
-  public void changeReferenceData(byte id, byte[] buffer, short offset) {
+  void changeReferenceData(byte id, byte[] buffer, short offset) {
 
     //
     // PRE-CONDITIONS
@@ -799,7 +798,7 @@ public final class PIV {
    * @param buffer The incoming APDU buffer
    * @param offset The starting offset of the CDATA element
    */
-  public void resetRetryCounter(byte id, byte[] buffer, short offset) {
+  void resetRetryCounter(byte id, byte[] buffer, short offset) {
 
     //
     // PRE-CONDITIONS
@@ -889,13 +888,13 @@ public final class PIV {
    * @param isSecureChannel Sets whether the current command was issued over a GlobalPlatform Secure
    *     Channel
    */
-  public void updateSecurityStatus(boolean isContactless, boolean isSecureChannel) {
+  void updateSecurityStatus(boolean isContactless, boolean isSecureChannel) {
     cspPIV.setIsContactless(isContactless);
     cspPIV.setIsSecureChannel(isSecureChannel);
   }
 
   /** Resets the PIN ALWAYS security status */
-  public void resetPinAlways() {
+  void resetPinAlways() {
     cspPIV.setPINAlways(false);
   }
 
@@ -919,7 +918,7 @@ public final class PIV {
    * @param length The length of the CDATA element
    * @return The length of the return data
    */
-  public short generalAuthenticate(byte[] buffer, short offset, short length) {
+  short generalAuthenticate(byte[] buffer, short offset, short length) {
 
     final byte CONST_TAG_TEMPLATE = (byte) 0x7C;
     final byte CONST_TAG_WITNESS = (byte) 0x80;
@@ -1368,7 +1367,7 @@ public final class PIV {
         ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
       }
 
-      // Verify that the EXPONENTIATION tag length is the same as a ECC public key
+      // Verify that the EXPONENTIATION tag length is the same as a ECC key
       tlvReader.setOffset(exponentiationOffset);
 
       // TODO: Should put this into the PIVKeyObjectECC class
@@ -1419,16 +1418,15 @@ public final class PIV {
 
   /**
    * The GENERATE ASYMMETRIC KEY PAIR card command initiates the generation and storing in the card
-   * of the reference data of an asymmetric key pair, i.e., a public key and a private key. The
-   * public key of the generated key pair is returned as the response to the command. If there is
+   * of the reference data of an asymmetric key pair, i.e., a key and a private key. The
+   * key of the generated key pair is returned as the response to the command. If there is
    * reference data currently associated with the key reference, it is replaced in full by the
    * generated data.
    *
    * @param buffer The incoming APDU buffer
    * @param offset The offset of the CDATA element
-   * @return The length of the return data
    */
-  public short generateAsymmetricKeyPair(byte[] buffer, short offset) {
+  void generateAsymmetricKeyPair(byte[] buffer, short offset) {
 
     // Request Elements
     final byte CONST_TAG_TEMPLATE = (byte) 0xAC;
@@ -1463,7 +1461,7 @@ public final class PIV {
 
     //
     // NOTE: We ignore the existence of the 'PARAMETER' tag, because according to SP800-78-4 the
-    // RSA public exponent is now fixed to 65537 (Section 3.1 PIV Cryptographic Keys).
+    // RSA exponent is now fixed to 65537 (Section 3.1 PIV Cryptographic Keys).
     // ECC keys have no parameter.
 
     // PRE-CONDITION 5 - The key reference and mechanism must point to an existing key
@@ -1494,9 +1492,6 @@ public final class PIV {
     short length = keyPair.generate(scratch, (short) 0);
 
     chainBuffer.setOutgoing(scratch, (short) 0, length, true);
-
-    // Done, return the length of the object we are writing back
-    return length;
   }
 
   /**
@@ -1586,7 +1581,7 @@ public final class PIV {
    * @param offset - The starting offset of the CDATA section
    * @param length - The length of the CDATA section
    */
-  public void putDataAdmin(byte[] buffer, short offset, short length) {
+  void putDataAdmin(byte[] buffer, short offset, short length) {
 
     final byte CONST_TAG_COMMAND = (byte) 0x30;
     final byte CONST_TAG_OPERATION = (byte) 0x8A;
@@ -1743,13 +1738,9 @@ public final class PIV {
  *     platform secure channel to be operating with the CEncDec attribute (encrypted) - It does
  *     NOT require the old value to be supplied in order to change a key - It also supports
    */
-  public void changeReferenceDataAdmin(byte[] buffer, short offset, short length) {
+  void changeReferenceDataAdmin(byte[] buffer, short offset, short length) {
 
     final byte CONST_TAG_SEQUENCE = (byte) 0x30;
-    final byte CONST_TAG_KEY = (byte) 0x80;
-    final byte CONST_TAG_RSA_N = (byte) 0x81; // RSA Modulus
-    final byte CONST_TAG_RSA_E = (byte) 0x82; // RSA Public Exponent
-    final byte CONST_TAG_RSA_D = (byte) 0x83; // RSA Private Exponent
 
     // NOTE: Currently RSA CRT keys are not used, this is a placeholder
     // final short CONST_TAG_RSA_P				= (short)0x0084; // RSA Prime Exponent P
@@ -1825,7 +1816,7 @@ public final class PIV {
     }
 
     // PRE-CONDITION 2 - The key object must not have the ROLE_GENERATE_ONLY role flag
-    if (key.hasRole(PIVKeyObject.ROLE_GENERATE_ONLY)) {
+    if (key.hasRole(ROLE_GENERATE_ONLY)) {
       ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
     }
 

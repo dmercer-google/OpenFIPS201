@@ -37,11 +37,11 @@ import javacard.framework.Util;
  * are outside the scope of PIV to interpret itself) - The TAG identifier is non-compliant (no
  * class, no constructed flag, no length formatting)
  */
-public final class TLVWriter {
+final class TLVWriter {
 
-  public static final short LENGTH_1BYTE_MAX = (short) 0x7F;
-  public static final short LENGTH_2BYTE_MAX = (short) 0xFF;
-  public static final short LENGTH_3BYTE_MAX = (short) 0x7FFF;
+  private static final short LENGTH_1BYTE_MAX = (short) 0x7F;
+  private static final short LENGTH_2BYTE_MAX = (short) 0xFF;
+  private static final short LENGTH_3BYTE_MAX = (short) 0x7FFF;
   // The maximum number of data bytes for the payload, NOT including the main tag and length octets
   // NOTE:
   // - This governs how many bytes are reserved for the parent L value
@@ -59,10 +59,10 @@ public final class TLVWriter {
   //
   // CONSTANTS
   //
-  public final Object[] dataPtr;
-  public final short[] context;
+  private final Object[] dataPtr;
+  private final short[] context;
 
-  public TLVWriter() {
+  TLVWriter() {
     dataPtr = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
     context = JCSystem.makeTransientShortArray(LENGTH_CONTEXT, JCSystem.CLEAR_ON_DESELECT);
   }
@@ -77,7 +77,7 @@ public final class TLVWriter {
    * @param contentLength the indicative length of the content that will be written
    * @param tag The parent tag value
    */
-  public void init(byte[] buffer, short offset, short contentLength, short tag) {
+  void init(byte[] buffer, short offset, short contentLength, short tag) {
     if (contentLength < (short) 0) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
 
     dataPtr[0] = buffer;
@@ -119,7 +119,7 @@ public final class TLVWriter {
    *
    * @return The length of the entire data object
    */
-  public short finish() {
+  short finish() {
 
     // Write the length to the data object tag field
     if (dataPtr[0] == null) ISOException.throwIt(ISO7816.SW_DATA_INVALID);
@@ -157,7 +157,7 @@ public final class TLVWriter {
   }
 
   /** Clears the current state */
-  public void reset() {
+  void reset() {
     dataPtr[0] = null;
 
     context[CONTEXT_OFFSET_RESET] = (short) 0;
@@ -166,116 +166,28 @@ public final class TLVWriter {
   }
 
   /**
-   * Returns whether a TLV object is currently being written
-   *
-   * @return Whether this instance is initialised
-   */
-  public boolean isInitialized() {
-    return (dataPtr[0] != null);
-  }
-
-  /**
-   * Adds an object with a byte value to the TLV object
+   * Writes the TAG portion of an object only
    *
    * @param tag The tag to write
-   * @param value The value to write
    */
-  public void write(short tag, byte value) {
-    if (dataPtr[0] == null) ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-    byte[] data = (byte[]) dataPtr[0];
-
-    // TODO: Make sure we won't go over our length boundary
-
-    // Set the TAG
-    writeTag(tag);
-
-    // Set the LENGTH
-    data[context[CONTEXT_OFFSET]++] = (byte) 1;
-
-    // Set the VALUE
-    data[context[CONTEXT_OFFSET]++] = value;
-  }
-
-  /**
-   * Adds an object with a short value to the TLV object
-   *
-   * @param tag The tag to write
-   * @param value The value to write
-   */
-  public void write(short tag, short value) {
-    if (dataPtr[0] == null) ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-    byte[] data = (byte[]) dataPtr[0];
-
-    // TODO: Make sure we won't go over our length boundary
-
-    // Set the TAG
-    writeTag(tag);
-
-    // Set the LENGTH
-    data[context[CONTEXT_OFFSET]++] = (byte) 2;
-
-    // Set the VALUE
-    Util.setShort(data, context[CONTEXT_OFFSET], value);
-
-    context[CONTEXT_OFFSET] += (short) 2;
-  }
-
-  /**
-   * Adds an object with a byte array value to the TLV object
-   *
-   * @param tag The tag to write
-   * @param buffer The byte array to read from
-   * @param offset The starting offset for the input array
-   * @param length The number of bytes to read from the input array
-   */
-  public void write(short tag, byte[] buffer, short offset, short length) {
-
-    if (dataPtr[0] == null) ISOException.throwIt(ISO7816.SW_DATA_INVALID);
-    byte[] data = (byte[]) dataPtr[0];
-
-    // TODO: Make sure we won't go over our length boundary
-
-    // Set the TAG
-    writeTag(tag);
-
-    // Set the LENGTH
-    writeLength(length);
-
-    // Set the VALUE
-    Util.arrayCopy(buffer, offset, data, context[CONTEXT_OFFSET], length);
-
-    // Increment the position / length
-    context[CONTEXT_OFFSET] += length;
+  void writeTag(byte tag) {
+    writeTag((short) (tag & 0xFF));
   }
 
   /**
    * Writes the TAG portion of an object only
    *
    * @param tag The tag to write
-   * @return The length of the tag bytes written
    */
-  public short writeTag(byte tag) {
-    return writeTag((short) (tag & 0xFF));
-  }
-
-  /**
-   * Writes the TAG portion of an object only
-   *
-   * @param tag The tag to write
-   * @return The length of the tag bytes written
-   */
-  public short writeTag(short tag) {
-
+  void writeTag(short tag) {
     if (tag >= 0 && tag <= 255) {
       // Single-byte tag
       ((byte[]) dataPtr[0])[context[CONTEXT_OFFSET]] = (byte) tag;
       context[CONTEXT_OFFSET]++;
-      return (short) 1; // Length of the tag
     } else {
       // Double-byte tag
       Util.setShort((byte[]) dataPtr[0], context[CONTEXT_OFFSET], tag);
       context[CONTEXT_OFFSET] += (short) 2;
-      return (short) 2; // Length of the tag
     }
   }
 
@@ -284,7 +196,7 @@ public final class TLVWriter {
    *
    * @param length The length value to write
    */
-  public void writeLength(short length) {
+  void writeLength(short length) {
 
     byte[] data = (byte[]) dataPtr[0];
 
@@ -309,7 +221,7 @@ public final class TLVWriter {
    *
    * @return The offset within the current buffer
    */
-  public short getOffset() {
+  short getOffset() {
     return context[CONTEXT_OFFSET];
   }
 
@@ -318,7 +230,7 @@ public final class TLVWriter {
    *
    * @param offset The new value to set the offset to
    */
-  public void setOffset(short offset) {
+  void setOffset(short offset) {
     context[CONTEXT_OFFSET] = offset;
   }
 }

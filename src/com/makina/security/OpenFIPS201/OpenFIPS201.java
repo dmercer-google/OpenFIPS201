@@ -26,10 +26,7 @@
 
 package com.makina.security.OpenFIPS201;
 
-import javacard.framework.APDU;
-import javacard.framework.Applet;
-import javacard.framework.ISO7816;
-import javacard.framework.ISOException;
+import javacard.framework.*;
 import org.globalplatform.GPSystem;
 import org.globalplatform.SecureChannel;
 
@@ -86,6 +83,7 @@ public final class OpenFIPS201 extends Applet {
     new OpenFIPS201().register(bArray, (short) (bOffset + 1), bArray[bOffset]);
   }
 
+  @Override
   public void deselect() {
 
     // Reset any security domain session (see resetSecurity() documentation)
@@ -114,6 +112,7 @@ public final class OpenFIPS201 extends Applet {
     }
   }
 
+  @Override
   public void process(APDU apdu) {
     if (selectingApplet()) {
       processPIV_SELECT(apdu);
@@ -130,13 +129,13 @@ public final class OpenFIPS201 extends Applet {
     // Handle incoming APDUs
     //
     // Process any commands that are wrapped by a GlobalPlatform Secure Channel
-    final byte media = (byte) (APDU.getProtocol() & APDU.PROTOCOL_MEDIA_MASK);
+    byte media = (byte) (APDU.getProtocol() & APDU.PROTOCOL_MEDIA_MASK);
 
-    final boolean contactless =
+    boolean contactless =
         (media == APDU.PROTOCOL_MEDIA_CONTACTLESS_TYPE_A
             || media == APDU.PROTOCOL_MEDIA_CONTACTLESS_TYPE_B);
 
-    final byte[] buffer = apdu.getBuffer();
+    byte[] buffer = apdu.getBuffer();
 
     // We pass the APDU here because this will send data on our behalf
     chainBuffer.processOutgoing(apdu);
@@ -275,7 +274,6 @@ public final class OpenFIPS201 extends Applet {
   private void processPIV_SELECT(APDU apdu) {
 
     byte[] buffer = apdu.getBuffer();
-    short length = (short) (buffer[ISO7816.OFFSET_LC] & 0xFF);
 
     /*
      * PRE-CONDITIONS
@@ -291,7 +289,7 @@ public final class OpenFIPS201 extends Applet {
      */
 
     // STEP 1 - Call the PIV 'SELECT' command
-    length = piv.select(buffer, ISO7816.OFFSET_CDATA);
+    short length = piv.select(buffer, ISO7816.OFFSET_CDATA);
 
     apdu.setOutgoingAndSend(ISO7816.OFFSET_CDATA, length);
   }
@@ -600,4 +598,13 @@ public final class OpenFIPS201 extends Applet {
     // STEP 2 - Process the first frame of the chainBuffer for this response
     chainBuffer.processOutgoing(apdu);
   }
+
+
+  /** Requests object deletion if supported by the card. */
+  static void runGc() {
+    if (JCSystem.isObjectDeletionSupported()) {
+      JCSystem.requestObjectDeletion();
+    }
+  }
+
 }

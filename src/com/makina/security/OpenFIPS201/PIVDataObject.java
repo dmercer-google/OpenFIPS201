@@ -32,30 +32,30 @@ import javacard.framework.JCSystem;
 import javacard.framework.Util;
 
 /** Provides functionality for PIV data objects */
-public final class PIVDataObject extends PIVObject {
+final class PIVDataObject extends PIVObject {
 
   // Note:  Do NOT use content.length to determine the number of bytes in the content array
   // rather use getLength().
-  public byte[] content;
+  byte[] content;
   // Indicates the number of bytes currently allocated.  In the case where an object is
   // reallocated with a smaller size this will be less than content.length
   private short bytesAllocated;
 
-  public PIVDataObject(byte id, byte modeContact, byte modeContactless) {
+  PIVDataObject(byte id, byte modeContact, byte modeContactless) {
     super(id, modeContact, modeContactless);
   }
 
   /** @return the number of bytes allocated in content which may be less than content.length */
-  public short getLength() {
+  short getLength() {
     return bytesAllocated;
   }
 
-  public void allocate(short length) {
+  void allocate(short length) {
     if (length < 0) {
       ISOException.throwIt(ISO7816.SW_DATA_INVALID);
     } else if (length == 0) {
       content = null;
-      runGc();
+      OpenFIPS201.runGc();
     } else if (content == null) {
       content = new byte[length];
     } else if (length > (short) content.length) {
@@ -82,14 +82,16 @@ public final class PIVDataObject extends PIVObject {
    *
    * @return True if the object is initialised
    */
-  public boolean isInitialised() {
+  @Override
+  boolean isInitialised() {
     return (content != null);
   }
 
   /*
    * Wipes all data from the current object
    */
-  public void clear() {
+  @Override
+  void clear() {
     if (content != null) {
       Util.arrayFillNonAtomic(content, (short) 0, (short) content.length, (byte) 0x00);
       bytesAllocated = 0;

@@ -35,19 +35,19 @@ import javacard.framework.*;
  * to support chained reads or writes simply calls this method with a buffer to act on and
  * ChainBuffer will do the rest.
  */
-public final class ChainBuffer {
+final class ChainBuffer {
 
   // The chain context is inactive and buffer does not point to anything
-  public static final short STATE_NONE = (short) 0x00;
+  private static final short STATE_NONE = (short) 0x00;
 
   // The chain context is reading (supporting multiple GET RESPONSE commands)
-  public static final short STATE_OUTGOING = (short) 0x01;
+  private static final short STATE_OUTGOING = (short) 0x01;
 
   // The chain context is writing (supporting chained commands of whatever INS started it)
-  public static final short STATE_INCOMING_OBJECT = (short) 0x02;
+  private static final short STATE_INCOMING_OBJECT = (short) 0x02;
 
   // The chain context is writing (supporting chained commands of whatever INS started it)
-  public static final short STATE_INCOMING_APDU = (short) 0x03;
+  private static final short STATE_INCOMING_APDU = (short) 0x03;
 
   // The chain state
   private static final short CONTEXT_STATE = (short) 0;
@@ -89,7 +89,7 @@ public final class ChainBuffer {
   // Holds transient context information about the current chain
   private final short[] context;
 
-  public ChainBuffer() {
+  ChainBuffer() {
 
     dataPtr = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
     context = JCSystem.makeTransientShortArray(LENGTH_CONTEXT, JCSystem.CLEAR_ON_DESELECT);
@@ -120,7 +120,7 @@ public final class ChainBuffer {
   }
 
   /** Resets the ChainBuffer and clears any internal buffer and state tracking values */
-  public void reset() {
+  void reset() {
 
     // Have we been asked to clear the buffer?
     if (dataPtr[0] != null && context[CONTEXT_CLEAR_ON_COMPLETE] != (short) 0) {
@@ -151,7 +151,7 @@ public final class ChainBuffer {
    * @param length The total number of bytes to read
    * @param clearOnCompletion If true, the buffer will be wiped when the chain operation ends
    */
-  public void setOutgoing(byte[] buffer, short offset, short length, boolean clearOnCompletion) {
+  void setOutgoing(byte[] buffer, short offset, short length, boolean clearOnCompletion) {
 
     reset();
 
@@ -173,7 +173,7 @@ public final class ChainBuffer {
    * @param length The length to expect to be written
    * @param atomic If true, this operation will be conducted inside a transaction
    */
-  public void setIncomingObject(byte[] destination, short offset, short length, boolean atomic) {
+  void setIncomingObject(byte[] destination, short offset, short length, boolean atomic) {
 
     reset();
 
@@ -202,7 +202,7 @@ public final class ChainBuffer {
    *     is more to come NOTE: The destination will contain only the command data of the APDU, not
    *     the header.
    */
-  public short processIncomingAPDU(
+  short processIncomingAPDU(
       byte[] apdu, short inOffset, short inLength, byte[] outBuffer, short outOffset) {
 
     //
@@ -362,7 +362,7 @@ public final class ChainBuffer {
    * @param offset The starting offset to read from
    * @param length The length of the data to read
    */
-  public void processIncomingObject(byte[] buffer, short offset, short length) {
+  void processIncomingObject(byte[] buffer, short offset, short length) {
 
     // Check if we have anything to do
     if (context[CONTEXT_STATE] != STATE_INCOMING_OBJECT) return;
@@ -453,7 +453,7 @@ public final class ChainBuffer {
    *
    * @param apdu The current APDU buffer to transmit with
    */
-  public void processOutgoing(APDU apdu) {
+  void processOutgoing(APDU apdu) {
 
     // Check if we have anything to do
     if (context[CONTEXT_STATE] != STATE_OUTGOING) return;
