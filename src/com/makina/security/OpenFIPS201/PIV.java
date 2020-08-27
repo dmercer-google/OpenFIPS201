@@ -173,10 +173,9 @@ public final class PIV {
    *
    * @param buffer The APDU buffer to write the APT to
    * @param offset The starting offset of the CDATA section
-   * @param length The length of the CDATA section
    * @return The length of the returned APT object
    */
-  public short select(byte[] buffer, short offset, short length) {
+  public short select(byte[] buffer, short offset) {
 
     //
     // PRE-CONDITIONS
@@ -357,8 +356,6 @@ public final class PIV {
     final byte CONST_TAG_NORMAL_1 = (byte) 0x5F;
     final byte CONST_TAG_NORMAL_2 = (byte) 0xC1;
 
-    final short CONST_LEN_DISCOVERY = (short) 0x01;
-    final short CONST_LEN_BIOMETRIC = (short) 0x02;
     final short CONST_LEN_NORMAL = (short) 0x03;
 
     //
@@ -631,13 +628,11 @@ public final class PIV {
    * The CHANGE REFERENCE DATA card command initiates the comparison of the authentication data in
    * the command data field with the current value of the reference data and, if this comparison is
    * successful, replaces the reference data with new reference data.
-   *
-   * @param id The requested PIN reference
+   *  @param id The requested PIN reference
    * @param buffer The incoming APDU buffer
    * @param offset The starting offset of the CDATA element
-   * @param length The length of the CDATA element
    */
-  public void changeReferenceData(byte id, byte[] buffer, short offset, short length) {
+  public void changeReferenceData(byte id, byte[] buffer, short offset) {
 
     //
     // PRE-CONDITIONS
@@ -800,13 +795,11 @@ public final class PIV {
    * The RESET RETRY COUNTER card command resets the retry counter of the PIN to its initial value
    * and changes the reference data. The command enables recovery of the PIV Card Application PIN in
    * the case that the cardholder has forgotten the PIV Card Application PIN.
-   *
-   * @param id The requested PIN reference
+   *  @param id The requested PIN reference
    * @param buffer The incoming APDU buffer
    * @param offset The starting offset of the CDATA element
-   * @param length The length of the CDATA element
    */
-  public void resetRetryCounter(byte id, byte[] buffer, short offset, short length) {
+  public void resetRetryCounter(byte id, byte[] buffer, short offset) {
 
     //
     // PRE-CONDITIONS
@@ -1550,8 +1543,6 @@ public final class PIV {
     // PIN shall apply to the Global PIN.
     for (short i = 0; i < Config.PIN_LENGTH_MAX; i++) {
 
-      boolean padding = false;
-
       if (i < Config.PIN_LENGTH_MIN) {
         // Must be between '0' and '9' only
         if (buffer[offset] < '0' || buffer[offset] > '9') return false;
@@ -1561,7 +1552,7 @@ public final class PIV {
       }
 
       // If we have reached the padding, must continue to be padding
-      if (padding && buffer[offset] != CONST_PAD) return false;
+      if (buffer[offset] != CONST_PAD) return false;
       if (buffer[offset] == CONST_PAD) {
         if (i < Config.PIN_LENGTH_MIN) return false; // Make sure our PIN bytes are minimum length
       }
@@ -1744,18 +1735,15 @@ public final class PIV {
    * operate on key references that are NOT listed in SP800-37-4. This is the primary method by
    * which administrative key references are updated and is intended to fill in the gap in PIV that
    * does not cover how pre-personalisation is implemented.
-   *
-   * @param id The target key / pin reference being changed
-   * @param buffer The incoming APDU buffer
+   *  @param buffer The incoming APDU buffer
    * @param offset The starting offset of the CDATA section
    * @param length The length of the CDATA section
-   *     <p>The main differences to CHANGE REFERENCE DATA are: - It supports updating any key
-   *     reference that is not covered by CHANGE REFERENCE DATA already - It requires a global
-   *     platform secure channel to be operating with the CEncDec attribute (encrypted) - It does
-   *     NOT require the old value to be supplied in order to change a key - It also supports
-   *     updating the PIN/PUK values, without requiring knowledge of the old value
+ *     <p>The main differences to CHANGE REFERENCE DATA are: - It supports updating any key
+ *     reference that is not covered by CHANGE REFERENCE DATA already - It requires a global
+ *     platform secure channel to be operating with the CEncDec attribute (encrypted) - It does
+ *     NOT require the old value to be supplied in order to change a key - It also supports
    */
-  public void changeReferenceDataAdmin(byte id, byte[] buffer, short offset, short length) {
+  public void changeReferenceDataAdmin(byte[] buffer, short offset, short length) {
 
     final byte CONST_TAG_SEQUENCE = (byte) 0x30;
     final byte CONST_TAG_KEY = (byte) 0x80;

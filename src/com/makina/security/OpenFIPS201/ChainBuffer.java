@@ -191,40 +191,6 @@ public final class ChainBuffer {
   }
 
   /**
-   * Used to pre-validate an incoming APDU, to support cancelling mid-command. Note that this
-   * function does not process the APDU at all, it simply checks whether the command has been
-   * changed before completion. If so, it cancels and optionally allows the APDU the continue being
-   * processed by the applet.
-   *
-   * @param apdu The incoming APDU buffer
-   * @param inOffset The starting offset of initial APDU
-   * @param inLength The length of the initial APDU
-   */
-  public void checkIncomingAPDU(byte[] apdu, short inOffset, short inLength) {
-
-    final short CLA_MASK = ~(short) 0x1000;
-
-    // Check if we have anything to do
-    if (context[CONTEXT_STATE] != STATE_INCOMING_APDU) return;
-
-    // If the command has changed, cancel the previous incoming APDU and continue.
-    if ((context[CONTEXT_APDU_CLASS] & CLA_MASK) != Util.getShort(apdu, ISO7816.OFFSET_CLA)
-        || context[CONTEXT_APDU_P1P2] != Util.getShort(apdu, ISO7816.OFFSET_P1)) {
-      // Cancel the previous incoming APDU
-      reset();
-
-      if (Config.FEATURE_STRICT_APDU_CHAINING) {
-        // For implementations that wish to force the completion of chained commands,
-        // this optionally throws an exception.
-        ISOException.throwIt(ISO7816.SW_LAST_COMMAND_EXPECTED);
-      }
-    }
-
-    // If we have passed, the applet will continue and direct this APDU to the appropriate
-    // handler, which will then call processIncomingAPDU() to complete this.
-  }
-
-  /**
    * Configures the ChainBuffer class to process a large incoming APDU
    *
    * @param apdu The first incoming APDU buffer

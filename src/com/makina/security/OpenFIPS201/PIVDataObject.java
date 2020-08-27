@@ -34,9 +34,6 @@ import javacard.framework.Util;
 /** Provides functionality for PIV data objects */
 public final class PIVDataObject extends PIVObject {
 
-  // Indicates whether this object is populated with data or not
-  // It exists to cover the scenario where the data memory is allocated, but the write fails mid-way
-  private static final short HEADER_POPULATED = (short) 3;
   // Note:  Do NOT use content.length to determine the number of bytes in the content array
   // rather use getLength().
   public byte[] content;

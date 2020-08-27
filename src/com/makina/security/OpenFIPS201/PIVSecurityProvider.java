@@ -245,7 +245,7 @@ public final class PIVSecurityProvider {
     // Iterate through the key store for ROLE_ADMIN keys
     if (!requiresSecureChannel) {
       PIVKeyObject key = firstKey;
-      while (key != null && !valid) {
+      while (key != null) {
         if (key.hasRole(PIVKeyObject.ROLE_ADMIN) && key.getSecurityStatus()) {
           valid = true;
           break;

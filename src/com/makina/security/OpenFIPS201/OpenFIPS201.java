@@ -291,7 +291,7 @@ public final class OpenFIPS201 extends Applet {
      */
 
     // STEP 1 - Call the PIV 'SELECT' command
-    length = piv.select(buffer, ISO7816.OFFSET_CDATA, length);
+    length = piv.select(buffer, ISO7816.OFFSET_CDATA);
 
     apdu.setOutgoingAndSend(ISO7816.OFFSET_CDATA, length);
   }
@@ -307,7 +307,6 @@ public final class OpenFIPS201 extends Applet {
     final byte P2 = (byte) 0xFF;
 
     byte[] buffer = apdu.getBuffer();
-    short length = (short) (buffer[ISO7816.OFFSET_LC] & 0xFF);
 
     /*
      * PRE-CONDITIONS
@@ -391,8 +390,6 @@ public final class OpenFIPS201 extends Applet {
 
     final byte CONST_P1_AUTH = (byte) 0x00;
     final byte CONST_P1_RESET = (byte) 0xFF;
-    final byte CONST_P2 = (byte) 0xFF;
-    final byte CONST_LC = (byte) 0x08;
 
     byte[] buffer = apdu.getBuffer();
     short length = (short) (buffer[ISO7816.OFFSET_LC] & 0xFF);
@@ -502,10 +499,10 @@ public final class OpenFIPS201 extends Applet {
     if (isStandard) {
       // CASE 1 - If the value of P2 is one of our standard PIN references, we handle this according
       // the SP800-73-4
-      piv.changeReferenceData(buffer[ISO7816.OFFSET_P2], buffer, ISO7816.OFFSET_CDATA, length);
+      piv.changeReferenceData(buffer[ISO7816.OFFSET_P2], buffer, ISO7816.OFFSET_CDATA);
     } else {
       // CASE 2 - Otherwise, we pass it to the administrative command handler
-      piv.changeReferenceDataAdmin(buffer[ISO7816.OFFSET_P2], buffer, ISO7816.OFFSET_CDATA, length);
+      piv.changeReferenceDataAdmin(buffer, ISO7816.OFFSET_CDATA, length);
     }
   }
 
@@ -540,7 +537,7 @@ public final class OpenFIPS201 extends Applet {
      * EXECUTION STEPS
      */
 
-    piv.resetRetryCounter(buffer[ISO7816.OFFSET_P2], buffer, ISO7816.OFFSET_CDATA, length);
+    piv.resetRetryCounter(buffer[ISO7816.OFFSET_P2], buffer, ISO7816.OFFSET_CDATA);
   }
 
   /**
@@ -580,7 +577,6 @@ public final class OpenFIPS201 extends Applet {
     final byte CONST_P1 = (byte) 0x00;
 
     byte[] buffer = apdu.getBuffer();
-    short length = (short) (buffer[ISO7816.OFFSET_LC] & 0xFF);
 
     /*
      * PRE-CONDITIONS
