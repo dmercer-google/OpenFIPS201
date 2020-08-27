@@ -185,8 +185,7 @@ final class PIVSecurityProvider {
    * @param mechanism The cryptographic mechanism
    * @param role The key role / privileges control bitmap
    */
-  void createKey(
-      byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
+  void createKey(byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
 
     // First, map the default mechanism code to TDEA 3KEY
     if (mechanism == PIV.ID_ALG_DEFAULT) {

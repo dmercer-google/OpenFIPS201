@@ -43,8 +43,7 @@ final class PIVKeyObjectSYM extends PIVKeyObject {
   private static final byte ELEMENT_KEY_CLEAR = (byte) 0xFF;
   private SecretKey key;
 
-  PIVKeyObjectSYM(
-      byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
+  PIVKeyObjectSYM(byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
     super(id, modeContact, modeContactless, mechanism, role);
   }
 

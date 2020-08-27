@@ -43,8 +43,7 @@ final class PIVKeyObjectECC extends PIVKeyObjectPKI {
   private final ECParams params;
   private final short marshaledPubKeyLen;
 
-  PIVKeyObjectECC(
-      byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
+  PIVKeyObjectECC(byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
     super(id, modeContact, modeContactless, mechanism, role);
 
     switch (getMechanism()) {

@@ -599,12 +599,10 @@ public final class OpenFIPS201 extends Applet {
     chainBuffer.processOutgoing(apdu);
   }
 
-
   /** Requests object deletion if supported by the card. */
   static void runGc() {
     if (JCSystem.isObjectDeletionSupported()) {
       JCSystem.requestObjectDeletion();
     }
   }
-
 }

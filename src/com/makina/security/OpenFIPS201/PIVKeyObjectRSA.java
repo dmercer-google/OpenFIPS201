@@ -44,8 +44,7 @@ final class PIVKeyObjectRSA extends PIVKeyObjectPKI {
   private static final byte CONST_TAG_MODULUS = (byte) 0x81; // RSA - The modulus
   private static final byte CONST_TAG_EXPONENT = (byte) 0x82; // RSA - The public exponent
 
-  PIVKeyObjectRSA(
-      byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
+  PIVKeyObjectRSA(byte id, byte modeContact, byte modeContactless, byte mechanism, byte role) {
     super(id, modeContact, modeContactless, mechanism, role);
   }
 

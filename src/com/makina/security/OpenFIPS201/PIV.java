@@ -627,7 +627,8 @@ final class PIV {
    * The CHANGE REFERENCE DATA card command initiates the comparison of the authentication data in
    * the command data field with the current value of the reference data and, if this comparison is
    * successful, replaces the reference data with new reference data.
-   *  @param id The requested PIN reference
+   *
+   * @param id The requested PIN reference
    * @param buffer The incoming APDU buffer
    * @param offset The starting offset of the CDATA element
    */
@@ -794,7 +795,8 @@ final class PIV {
    * The RESET RETRY COUNTER card command resets the retry counter of the PIN to its initial value
    * and changes the reference data. The command enables recovery of the PIV Card Application PIN in
    * the case that the cardholder has forgotten the PIV Card Application PIN.
-   *  @param id The requested PIN reference
+   *
+   * @param id The requested PIN reference
    * @param buffer The incoming APDU buffer
    * @param offset The starting offset of the CDATA element
    */
@@ -1418,10 +1420,9 @@ final class PIV {
 
   /**
    * The GENERATE ASYMMETRIC KEY PAIR card command initiates the generation and storing in the card
-   * of the reference data of an asymmetric key pair, i.e., a key and a private key. The
-   * key of the generated key pair is returned as the response to the command. If there is
-   * reference data currently associated with the key reference, it is replaced in full by the
-   * generated data.
+   * of the reference data of an asymmetric key pair, i.e., a key and a private key. The key of the
+   * generated key pair is returned as the response to the command. If there is reference data
+   * currently associated with the key reference, it is replaced in full by the generated data.
    *
    * @param buffer The incoming APDU buffer
    * @param offset The offset of the CDATA element
@@ -1730,13 +1731,14 @@ final class PIV {
    * operate on key references that are NOT listed in SP800-37-4. This is the primary method by
    * which administrative key references are updated and is intended to fill in the gap in PIV that
    * does not cover how pre-personalisation is implemented.
-   *  @param buffer The incoming APDU buffer
+   *
+   * @param buffer The incoming APDU buffer
    * @param offset The starting offset of the CDATA section
    * @param length The length of the CDATA section
- *     <p>The main differences to CHANGE REFERENCE DATA are: - It supports updating any key
- *     reference that is not covered by CHANGE REFERENCE DATA already - It requires a global
- *     platform secure channel to be operating with the CEncDec attribute (encrypted) - It does
- *     NOT require the old value to be supplied in order to change a key - It also supports
+   *     <p>The main differences to CHANGE REFERENCE DATA are: - It supports updating any key
+   *     reference that is not covered by CHANGE REFERENCE DATA already - It requires a global
+   *     platform secure channel to be operating with the CEncDec attribute (encrypted) - It does
+   *     NOT require the old value to be supplied in order to change a key - It also supports
    */
   void changeReferenceDataAdmin(byte[] buffer, short offset, short length) {
 

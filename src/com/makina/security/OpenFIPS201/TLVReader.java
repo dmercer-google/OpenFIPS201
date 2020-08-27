@@ -206,9 +206,7 @@ final class TLVReader {
         < context[CONTEXT_LENGTH]);
   }
 
-  /**
-   * Moves to the first tag inside the current tag
-   */
+  /** Moves to the first tag inside the current tag */
   void moveInto() {
     context[CONTEXT_POSITION] = getDataOffset();
   }
